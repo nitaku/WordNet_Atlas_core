@@ -178,7 +178,7 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         
     ### translate cells to label font size ###
     cells2fontsize = d3.scale.pow()
-        .exponent(0.3)
+        .exponent(0.4)
         .domain([1, leaves.length])
         .range([4,200])
         
@@ -204,13 +204,13 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
     ### draw the cells ###
     cells = map.selectAll('.cell')
         .data(leaves)
-      .enter().append('path')
+      .enter().append('rect')
         .attr('class', 'cell')
-        # .attr('d', (d) -> jigsaw.square_generate_svg_path size2cellscale(d.size) )
-        .attr('d', jigsaw.square_generate_svg_path scale )
-        .attr('transform', (d) -> "translate(#{d.x},#{d.y})")
+        .attr('x', (d) -> d.x-scale/2)
+        .attr('y', (d) -> d.y-scale/2)
+        .attr('width', scale)
+        .attr('height', scale)
         .attr('fill', (d) -> depth_color(d.depth))
-        # .attr('fill', 'orange')
         
     ### draw boundaries ###
     regions = map.selectAll('.region')
@@ -223,11 +223,6 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
     map.append('use')
         .attr('class', 'land-fill')
         .attr('xlink:href', '#land')
-        
-    ### store boundaries in a convenient structure for accessing them by depth ###
-    depth_level = []
-    for depth in [0..tree.height]
-        depth_level.push regions.filter((r) -> r.depth is depth)
         
     ### draw the graph links ###
     # map.selectAll('.graph_link')
@@ -258,16 +253,16 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         .text((d) -> (s.lemma for s in d.senses).join(', '))
         
     ### draw the leaf labels ###
-    leaf_labels = map.selectAll('.leaf_label')
-        .data(leaves)
-      .enter().append('text')
-        .attr('class', 'leaf_label')
-        .attr('font-size', '2.5')
-        .attr('dy', '0.35em')
-        .attr('transform', (d) -> "translate(#{d.x},#{d.y})")
-        .text((d) -> "#{d.lemma}[#{d.sensenum}]")
-        .attr('font-weight', (d) -> if d.is_core then 'bold' else 'normal')
-        .attr('visibility', 'hidden')
+    # leaf_labels = map.selectAll('.leaf_label')
+        # .data(leaves)
+      # .enter().append('text')
+        # .attr('class', 'leaf_label')
+        # .attr('font-size', '2.5')
+        # .attr('dy', '0.35em')
+        # .attr('transform', (d) -> "translate(#{d.x},#{d.y})")
+        # .text((d) -> "#{d.lemma}[#{d.sensenum}]")
+        # .attr('font-weight', (d) -> if d.is_core then 'bold' else 'normal')
+        # .attr('display', 'none')
         
         
     ### ORTHOGONAL PROJECTIONS ###
@@ -318,39 +313,18 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         
     ### LOD ###
     ### update Level Of Detail ###
-    z = 1
     last_z = -1
     
-    lod_switch = (args) ->
-        if z >= args.z_th and last_z < args.z_th
-            args.forward()
-        if z < args.z_th and last_z >= args.z_th
-            args.backward()
-            
-    this.lod_update = (_z) ->
-        z = _z
-        # if z >= 4 and last_z < 4
-            # cells.attr('stroke', 'white')
-        # if z == 1 or (z < 4 and last_z >= 4)
-            # cells.attr('stroke', 'none')
-            
-        # lod_switch
-            # z_th: 18
-            # forward: () ->
-                # leaf_labels.attr('display', 'inline')
-            # backward: () ->
-                # leaf_labels.attr('display', 'none')
-                
-        
+    this.lod_update = (z) ->
         th_depth = Math.floor(z/2)+1
         if th_depth != Math.floor(last_z/2)+1
             regions
-                .attr('stroke', (d) -> if d.depth <= th_depth then '#444' else 'none')
-                .attr('stroke-width', (d) -> if d.depth < th_depth then '2px' else if d.depth == th_depth then '1px')
+                .attr('display', (d) -> if d.depth <= th_depth then 'inline' else 'none')
+                .attr('stroke-width', (d) -> if d.depth < th_depth then '2px' else '1px')
                 
             labels
-                .attr('visibility', (d) -> if d.depth == th_depth then 'visible' else 'hidden')
-                .attr('opacity', (d) -> if d.depth < th_depth then 0.2 else 1)
+                .attr('fill-opacity', (d) -> if d.depth < th_depth then 0.2 else 1)
+                .attr('display', (d) -> if d.depth <= th_depth then 'inline' else 'none')
                 
         last_z = z
         

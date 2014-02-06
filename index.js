@@ -82,7 +82,7 @@
     */
     /* resolve node IDs (not optimized at all!)
     */
-    var cells, cells2fontsize, defs, depth, depth_color, depth_level, front_range, front_step, hierarchy, l, labels, last_z, leaf_labels, leaves, lod_switch, margin, n, nodes, projs, regions, scale, side_range, side_step, tree, whiten, whiteness, z, _i, _j, _k, _l, _len, _len2, _len3, _len4, _ref, _ref2, _ref3, _ref4;
+    var cells, cells2fontsize, defs, depth_color, front_range, front_step, hierarchy, l, labels, last_z, leaves, margin, n, nodes, projs, regions, scale, side_range, side_step, tree, whiten, whiteness, _i, _j, _k, _l, _len, _len2, _len3, _len4, _ref, _ref2, _ref3;
     console.debug('Objectifying the graph and constructing the tree...');
     _ref = graph.links;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
@@ -177,7 +177,7 @@
     */
     /* translate cells to label font size
     */
-    cells2fontsize = d3.scale.pow().exponent(0.3).domain([1, leaves.length]).range([4, 200]);
+    cells2fontsize = d3.scale.pow().exponent(0.4).domain([1, leaves.length]).range([4, 200]);
     /* compute all the internal nodes regions
     */
     jigsaw.treemap(tree, scale, jigsaw.SQUARE_CELL);
@@ -191,9 +191,11 @@
     map.append('use').attr('class', 'land-glow-inner').attr('xlink:href', '#land');
     /* draw the cells
     */
-    cells = map.selectAll('.cell').data(leaves).enter().append('path').attr('class', 'cell').attr('d', jigsaw.square_generate_svg_path(scale)).attr('transform', function(d) {
-      return "translate(" + d.x + "," + d.y + ")";
-    }).attr('fill', function(d) {
+    cells = map.selectAll('.cell').data(leaves).enter().append('rect').attr('class', 'cell').attr('x', function(d) {
+      return d.x - scale / 2;
+    }).attr('y', function(d) {
+      return d.y - scale / 2;
+    }).attr('width', scale).attr('height', scale).attr('fill', function(d) {
       return depth_color(d.depth);
     });
     /* draw boundaries
@@ -206,14 +208,6 @@
     /* draw the land border (above cells and boundaries)
     */
     map.append('use').attr('class', 'land-fill').attr('xlink:href', '#land');
-    /* store boundaries in a convenient structure for accessing them by depth
-    */
-    depth_level = [];
-    for (depth = 0, _ref4 = tree.height; 0 <= _ref4 ? depth <= _ref4 : depth >= _ref4; 0 <= _ref4 ? depth++ : depth--) {
-      depth_level.push(regions.filter(function(r) {
-        return r.depth === depth;
-      }));
-    }
     /* draw the graph links
     */
     /* draw the graph links
@@ -229,11 +223,11 @@
     }).text(function(d) {
       var s;
       return ((function() {
-        var _len5, _m, _ref5, _results;
-        _ref5 = d.senses;
+        var _len5, _m, _ref4, _results;
+        _ref4 = d.senses;
         _results = [];
-        for (_m = 0, _len5 = _ref5.length; _m < _len5; _m++) {
-          s = _ref5[_m];
+        for (_m = 0, _len5 = _ref4.length; _m < _len5; _m++) {
+          s = _ref4[_m];
           _results.push(s.lemma);
         }
         return _results;
@@ -241,17 +235,6 @@
     });
     /* draw the leaf labels
     */
-    leaf_labels = map.selectAll('.leaf_label').data(leaves).enter().append('text').attr('class', 'leaf_label').attr('font-size', '2.5').attr('dy', '0.35em').attr('transform', function(d) {
-      return "translate(" + d.x + "," + d.y + ")";
-    }).text(function(d) {
-      return "" + d.lemma + "[" + d.sensenum + "]";
-    }).attr('font-weight', function(d) {
-      if (d.is_core) {
-        return 'bold';
-      } else {
-        return 'normal';
-      }
-    }).attr('visibility', 'hidden');
     /* ORTHOGONAL PROJECTIONS
     */
     /* FIXME define a width scale for leaf depth
@@ -282,8 +265,8 @@
     /* capitals
     */
     map.selectAll('.capital').data(nodes.filter(function(d) {
-      var _ref5;
-      return d.type === 'synset' && ((_ref5 = d.depth) === 0 || _ref5 === 1);
+      var _ref4;
+      return d.type === 'synset' && ((_ref4 = d.depth) === 0 || _ref4 === 1);
     })).enter().append('g').attr('class', 'capital').selectAll('.capital_cell').data(function(d) {
       return d.senses;
     }).enter().append('rect').attr('class', 'capital_cell').attr('x', function(d) {
@@ -295,41 +278,35 @@
     */
     /* update Level Of Detail
     */
-    z = 1;
     last_z = -1;
-    lod_switch = function(args) {
-      if (z >= args.z_th && last_z < args.z_th) args.forward();
-      if (z < args.z_th && last_z >= args.z_th) return args.backward();
-    };
-    this.lod_update = function(_z) {
+    this.lod_update = function(z) {
       var th_depth;
-      z = _z;
       th_depth = Math.floor(z / 2) + 1;
       if (th_depth !== Math.floor(last_z / 2) + 1) {
-        regions.attr('stroke', function(d) {
+        regions.attr('display', function(d) {
           if (d.depth <= th_depth) {
-            return '#444';
+            return 'inline';
           } else {
             return 'none';
           }
         }).attr('stroke-width', function(d) {
           if (d.depth < th_depth) {
             return '2px';
-          } else if (d.depth === th_depth) {
+          } else {
             return '1px';
           }
         });
-        labels.attr('visibility', function(d) {
-          if (d.depth === th_depth) {
-            return 'visible';
-          } else {
-            return 'hidden';
-          }
-        }).attr('opacity', function(d) {
+        labels.attr('fill-opacity', function(d) {
           if (d.depth < th_depth) {
             return 0.2;
           } else {
             return 1;
+          }
+        }).attr('display', function(d) {
+          if (d.depth <= th_depth) {
+            return 'inline';
+          } else {
+            return 'none';
           }
         });
       }

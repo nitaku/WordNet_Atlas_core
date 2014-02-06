@@ -180,7 +180,7 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
     cells2fontsize = d3.scale.pow()
         .exponent(0.3)
         .domain([1, leaves.length])
-        .range([4,120])
+        .range([4,200])
         
     ### compute all the internal nodes regions ###
     jigsaw.treemap(tree, scale, jigsaw.SQUARE_CELL)
@@ -212,19 +212,22 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         .attr('fill', (d) -> depth_color(d.depth))
         # .attr('fill', 'orange')
         
-    ### draw the land border (above cells) ###
+    ### draw boundaries ###
+    regions = map.selectAll('.region')
+        .data(nodes.filter((d)->d.type is 'synset').reverse()) # draw regions in reverse, to avoid boundary overwrite
+      .enter().append('path')
+        .attr('class', 'region')
+        .attr('d', (d) -> jigsaw.get_svg_path d.region)
+        
+    ### draw the land border (above cells and boundaries) ###
     map.append('use')
         .attr('class', 'land-fill')
         .attr('xlink:href', '#land')
         
-    ### draw boundaries ###
-    map.selectAll('.region')
-        .data(nodes.filter((d)->d.depth in [1,2]).reverse()) # draw regions in reverse, to avoid boundary overwrite
-      .enter().append('path')
-        .attr('class', 'region')
-        .attr('d', (d) -> jigsaw.get_svg_path d.region)
-        .attr('stroke', (d) -> if d.depth is 1 then '#444' else '#999')
-        .attr('stroke-width', (d) -> if d.depth is 1 then '2px' else '1px')
+    ### store boundaries in a convenient structure for accessing them by depth ###
+    depth_level = []
+    for depth in [0..tree.height]
+        depth_level.push regions.filter((r) -> r.depth is depth)
         
     ### draw the graph links ###
     # map.selectAll('.graph_link')
@@ -245,8 +248,8 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         # .attr('stroke', (d)->if d.is_tree_link then 'teal' else 'orange')
         
     ### draw labels ###
-    map.selectAll('.label')
-        .data(nodes.filter((d)->d.depth in [1,2] and d.type is 'synset'))
+    labels = map.selectAll('.label')
+        .data(nodes.filter((d)->d.type is 'synset'))
       .enter().append('text')
         .attr('class', 'label')
         .attr('font-size', (d) -> cells2fontsize(d.leaf_descendants.length))
@@ -264,6 +267,7 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         .attr('transform', (d) -> "translate(#{d.x},#{d.y})")
         .text((d) -> "#{d.lemma}[#{d.sensenum}]")
         .attr('font-weight', (d) -> if d.is_core then 'bold' else 'normal')
+        .attr('visibility', 'hidden')
         
         
     ### ORTHOGONAL PROJECTIONS ###
@@ -314,19 +318,41 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         
     ### LOD ###
     ### update Level Of Detail ###
-    last_z = 1
-    this.lod_update = (z) ->
+    z = 1
+    last_z = -1
+    
+    lod_switch = (args) ->
+        if z >= args.z_th and last_z < args.z_th
+            args.forward()
+        if z < args.z_th and last_z >= args.z_th
+            args.backward()
+            
+    this.lod_update = (_z) ->
+        z = _z
         # if z >= 4 and last_z < 4
             # cells.attr('stroke', 'white')
         # if z == 1 or (z < 4 and last_z >= 4)
             # cells.attr('stroke', 'none')
             
-        if z >= 18 and last_z < 18
-            leaf_labels.attr('display', 'inline')
-        if z == 1 or (z < 18 and last_z >= 18)
-            leaf_labels.attr('display', 'none')
+        # lod_switch
+            # z_th: 18
+            # forward: () ->
+                # leaf_labels.attr('display', 'inline')
+            # backward: () ->
+                # leaf_labels.attr('display', 'none')
+                
         
+        th_depth = Math.floor(z/2)+1
+        if th_depth != Math.floor(last_z/2)+1
+            regions
+                .attr('stroke', (d) -> if d.depth <= th_depth then '#444' else 'none')
+                .attr('stroke-width', (d) -> if d.depth < th_depth then '2px' else if d.depth == th_depth then '1px')
+                
+            labels
+                .attr('visibility', (d) -> if d.depth == th_depth then 'visible' else 'hidden')
+                .attr('opacity', (d) -> if d.depth < th_depth then 0.2 else 1)
+                
         last_z = z
         
-    lod_update(last_z)
+    lod_update(1)
     

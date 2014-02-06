@@ -1,7 +1,7 @@
 
 ### GLOBAL SETTINGS, SVG and panels ###
 
-width = 960
+width = 1024
 height = 620
 
 side_width = 80
@@ -298,6 +298,19 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         .attr('fill', (d) -> depth_color(d.depth))
         .attr('stroke', (d) -> depth_color(d.depth))
         
+    ### capitals ###
+    map.selectAll('.capital')
+        .data(nodes.filter((d) -> d.type is 'synset' and d.depth in [0,1]))
+      .enter().append('g')
+        .attr('class', 'capital')
+      .selectAll('.capital_cell')
+        .data((d) -> d.senses)
+      .enter().append('rect')
+        .attr('class', 'capital_cell')
+        .attr('x', (d) -> d.x-scale/2)
+        .attr('y', (d) -> d.y-scale/2)
+        .attr('width', scale)
+        .attr('height', scale)
         
     ### LOD ###
     ### update Level Of Detail ###

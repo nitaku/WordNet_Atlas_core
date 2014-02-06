@@ -5,7 +5,7 @@
 (function() {
   var bottom, bottom_height, bottom_map, global_scale, height, map, side, side_map, side_width, svg, vis, width, zoom;
 
-  width = 960;
+  width = 1024;
 
   height = 620;
 
@@ -285,6 +285,18 @@
     }).attr('stroke', function(d) {
       return depth_color(d.depth);
     });
+    /* capitals
+    */
+    map.selectAll('.capital').data(nodes.filter(function(d) {
+      var _ref4;
+      return d.type === 'synset' && ((_ref4 = d.depth) === 0 || _ref4 === 1);
+    })).enter().append('g').attr('class', 'capital').selectAll('.capital_cell').data(function(d) {
+      return d.senses;
+    }).enter().append('rect').attr('class', 'capital_cell').attr('x', function(d) {
+      return d.x - scale / 2;
+    }).attr('y', function(d) {
+      return d.y - scale / 2;
+    }).attr('width', scale).attr('height', scale);
     /* LOD
     */
     /* update Level Of Detail

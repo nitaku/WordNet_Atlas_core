@@ -69,10 +69,12 @@ svg.call(zoom)
 
 ### DATA ###
 
+console.debug 'Getting data...'
 d3.json 'wnen30_core_n_longest.json', (graph) ->
     
     ### objectify the graph ###
     ### resolve node IDs (not optimized at all!) ###
+    console.debug 'Objectifying the graph and constructing the tree...'
     for l in graph.links
         for n in graph.nodes
             if l.source is n.id
@@ -88,16 +90,32 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
                 
             l.source.children.push l.target
             
+        ### store senses also in a different structure ###
+        if l.target.type == 'sense'
+            # ASSERT sources are synsets
+            if not l.source.senses?
+                l.source.senses = []
+                
+            l.source.senses.push l.target
+            
     ### find the root of the tree ###
+    console.debug 'Finding the root...'
     for n in graph.nodes
         if n.id == 100001740 # this is the synsetid of 'entity'
             tree = n
             
+    console.debug 'Computing d3 hierarchy layout...'
     hierarchy = d3.layout.hierarchy()
     nodes = hierarchy(tree)
     
+    ### sort the senses by sensenum ###
+    console.debug 'Sorting senses...'
+    for n in nodes
+        if n.type == 'synset'
+            n.senses.sort((a,b)->b.sensenum-a.sensenum)
     
     ### this tree is unordered, we need a canonical ordering for it ###
+    console.debug 'Computing canonical sort...'
     tree_utils.canonical_sort(tree)
     
     
@@ -105,19 +123,23 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
     leaves = tree_utils.get_leaves(tree)
 
     ### compute the subtree height for each node ###
+    console.debug 'Computing subtrees height...'
     tree_utils.compute_height(tree)
     
     
     ### VISUALIZATION ###
     
     ### compute the space-filling curve layout ###
+    console.debug 'Computing the Space-Filling Curve layout...'
     scale = 26
     sfc_layout.displace(leaves, sfc_layout.HILBERT, scale, 0)
     
     ### compute also the position of internal nodes ###
+    console.debug 'Computing the position of internal nodes...'
     sfc_layout.displace_tree(tree)
 
     ### define a bundle layout ###
+    # console.debug 'Computing the d3 bundle layout...'
     # bundle = d3.layout.bundle()
     # bundles = bundle(graph.links.filter((l)->not l.tree_link))
 
@@ -128,11 +150,14 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         # .y((d) -> d.y)
         
     ### group leaves by depth ###
+    console.debug 'Computing the orthogonal projections for depthmaps...'
     projs = {
         front: orthoproj.depth_projs(leaves, 'x'),
         side: orthoproj.depth_projs(leaves, 'y')
     }
-
+    
+    console.debug 'Almost ready to draw...'
+    
     ### define a color scale for leaf depth ###
     whiteness = 0.4
     whiten = (color) -> d3.interpolateHcl(color, d3.hcl(undefined,0,100))(whiteness)
@@ -155,7 +180,7 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
     cells2fontsize = d3.scale.pow()
         .exponent(0.3)
         .domain([1, leaves.length])
-        .range([4,80])
+        .range([4,120])
         
     ### compute all the internal nodes regions ###
     jigsaw.treemap(tree, scale, jigsaw.SQUARE_CELL)
@@ -220,14 +245,14 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         # .attr('stroke', (d)->if d.is_tree_link then 'teal' else 'orange')
         
     ### draw labels ###
-    # map.selectAll('.label')
-        # .data(nodes.filter((d)->d.depth is 1))
-      # .enter().append('text')
-        # .attr('class', 'label')
-        # .attr('font-size', (d) -> cells2fontsize(d.leaf_descendants.length))
-        # .attr('dy', '0.35em')
-        # .attr('transform', (d) -> "translate(#{d.x},#{d.y})")
-        # .text((d) -> d.name)
+    map.selectAll('.label')
+        .data(nodes.filter((d)->d.depth in [1,2] and d.type is 'synset'))
+      .enter().append('text')
+        .attr('class', 'label')
+        .attr('font-size', (d) -> cells2fontsize(d.leaf_descendants.length))
+        .attr('dy', '0.35em')
+        .attr('transform', (d) -> "translate(#{d.x},#{d.y})")
+        .text((d) -> (s.lemma for s in d.senses).join(', '))
         
     ### draw the leaf labels ###
     leaf_labels = map.selectAll('.leaf_label')
@@ -237,7 +262,7 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         .attr('font-size', '2.5')
         .attr('dy', '0.35em')
         .attr('transform', (d) -> "translate(#{d.x},#{d.y})")
-        .text((d) -> "#{d.lemma} [#{d.sensenum}] #{d.pos}.")
+        .text((d) -> "#{d.lemma}[#{d.sensenum}]")
         .attr('font-weight', (d) -> if d.is_core then 'bold' else 'normal')
         
         

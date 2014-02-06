@@ -75,12 +75,15 @@
   /* DATA
   */
 
+  console.debug('Getting data...');
+
   d3.json('wnen30_core_n_longest.json', function(graph) {
     /* objectify the graph
     */
     /* resolve node IDs (not optimized at all!)
     */
-    var cells, cells2fontsize, defs, depth_color, front_range, front_step, hierarchy, l, last_z, leaf_labels, leaves, margin, n, nodes, projs, scale, side_range, side_step, tree, whiten, whiteness, _i, _j, _k, _len, _len2, _len3, _ref, _ref2, _ref3;
+    var cells, cells2fontsize, defs, depth_color, front_range, front_step, hierarchy, l, last_z, leaf_labels, leaves, margin, n, nodes, projs, scale, side_range, side_step, tree, whiten, whiteness, _i, _j, _k, _l, _len, _len2, _len3, _len4, _ref, _ref2, _ref3;
+    console.debug('Objectifying the graph and constructing the tree...');
     _ref = graph.links;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       l = _ref[_i];
@@ -96,42 +99,67 @@
         if (!(l.source.children != null)) l.source.children = [];
         l.source.children.push(l.target);
       }
+      /* store senses also in a different structure
+      */
+      if (l.target.type === 'sense') {
+        if (!(l.source.senses != null)) l.source.senses = [];
+        l.source.senses.push(l.target);
+      }
     }
     /* find the root of the tree
     */
+    console.debug('Finding the root...');
     _ref3 = graph.nodes;
     for (_k = 0, _len3 = _ref3.length; _k < _len3; _k++) {
       n = _ref3[_k];
       if (n.id === 100001740) tree = n;
     }
+    console.debug('Computing d3 hierarchy layout...');
     hierarchy = d3.layout.hierarchy();
     nodes = hierarchy(tree);
+    /* sort the senses by sensenum
+    */
+    console.debug('Sorting senses...');
+    for (_l = 0, _len4 = nodes.length; _l < _len4; _l++) {
+      n = nodes[_l];
+      if (n.type === 'synset') {
+        n.senses.sort(function(a, b) {
+          return b.sensenum - a.sensenum;
+        });
+      }
+    }
     /* this tree is unordered, we need a canonical ordering for it
     */
+    console.debug('Computing canonical sort...');
     tree_utils.canonical_sort(tree);
     /* obtain the sequence of leaves
     */
     leaves = tree_utils.get_leaves(tree);
     /* compute the subtree height for each node
     */
+    console.debug('Computing subtrees height...');
     tree_utils.compute_height(tree);
     /* VISUALIZATION
     */
     /* compute the space-filling curve layout
     */
+    console.debug('Computing the Space-Filling Curve layout...');
     scale = 26;
     sfc_layout.displace(leaves, sfc_layout.HILBERT, scale, 0);
     /* compute also the position of internal nodes
     */
+    console.debug('Computing the position of internal nodes...');
     sfc_layout.displace_tree(tree);
     /* define a bundle layout
     */
     /* group leaves by depth
     */
+    console.debug('Computing the orthogonal projections for depthmaps...');
     projs = {
       front: orthoproj.depth_projs(leaves, 'x'),
       side: orthoproj.depth_projs(leaves, 'y')
     };
+    console.debug('Almost ready to draw...');
     /* define a color scale for leaf depth
     */
     whiteness = 0.4;
@@ -149,7 +177,7 @@
     */
     /* translate cells to label font size
     */
-    cells2fontsize = d3.scale.pow().exponent(0.3).domain([1, leaves.length]).range([4, 80]);
+    cells2fontsize = d3.scale.pow().exponent(0.3).domain([1, leaves.length]).range([4, 120]);
     /* compute all the internal nodes regions
     */
     jigsaw.treemap(tree, scale, jigsaw.SQUARE_CELL);
@@ -197,12 +225,32 @@
     */
     /* draw labels
     */
+    map.selectAll('.label').data(nodes.filter(function(d) {
+      var _ref4;
+      return ((_ref4 = d.depth) === 1 || _ref4 === 2) && d.type === 'synset';
+    })).enter().append('text').attr('class', 'label').attr('font-size', function(d) {
+      return cells2fontsize(d.leaf_descendants.length);
+    }).attr('dy', '0.35em').attr('transform', function(d) {
+      return "translate(" + d.x + "," + d.y + ")";
+    }).text(function(d) {
+      var s;
+      return ((function() {
+        var _len5, _m, _ref4, _results;
+        _ref4 = d.senses;
+        _results = [];
+        for (_m = 0, _len5 = _ref4.length; _m < _len5; _m++) {
+          s = _ref4[_m];
+          _results.push(s.lemma);
+        }
+        return _results;
+      })()).join(', ');
+    });
     /* draw the leaf labels
     */
     leaf_labels = map.selectAll('.leaf_label').data(leaves).enter().append('text').attr('class', 'leaf_label').attr('font-size', '2.5').attr('dy', '0.35em').attr('transform', function(d) {
       return "translate(" + d.x + "," + d.y + ")";
     }).text(function(d) {
-      return "" + d.lemma + " [" + d.sensenum + "] " + d.pos + ".";
+      return "" + d.lemma + "[" + d.sensenum + "]";
     }).attr('font-weight', function(d) {
       if (d.is_core) {
         return 'bold';

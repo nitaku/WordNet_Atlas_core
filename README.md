@@ -1,4 +1,4 @@
-WordNet_Atlas_core
+WordNet Atlas core
 ==================
 
-An interactive atlas of WordNet, displaying maps of concepts and a readable dictionary.
+An interactive atlas of the core of WordNet nouns, displaying maps of concepts and a readable dictionary.

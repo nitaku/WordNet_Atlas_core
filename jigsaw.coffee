@@ -8,6 +8,11 @@ window.jigsaw = {
         a = scale/2
         return "M#{-a} #{-a} L#{-a} #{a} L#{a} #{a} L#{a} #{-a} Z"
         
+    iso_generate_svg_path: (scale) ->
+        rx = scale*Math.sqrt(2)/2
+        ry = scale*Math.sqrt(2)/(2*Math.sqrt(3))
+        return "M#{0} #{-ry} L#{rx} #{0} L#{0} #{ry} L#{-rx} #{0} Z"
+        
     HEX_CELL: (node, scale) ->
         a = scale/2
         r = a / Math.sin(Math.PI/3)
@@ -21,6 +26,11 @@ window.jigsaw = {
         
         return region
         
+    ISO_CELL: (node, scale) ->
+        rx = scale*Math.sqrt(2)/2
+        ry = scale*Math.sqrt(2)/(2*Math.sqrt(3))
+        region = [[{X:node.x, Y:node.y-ry}, {X:node.x+rx, Y:node.y}, {X:node.x, Y:node.y+ry}, {X:node.x-rx, Y:node.y}]]
+        
     treemap: (node, scale, base) ->
         if not node.children?
             node.region = base(node, scale)
@@ -28,7 +38,7 @@ window.jigsaw = {
             
         children_paths = (jigsaw.treemap(child, scale, base) for child in node.children).reduce((a, d) -> a.concat(d))
         
-        upscale = 100
+        upscale = 1000
         ClipperLib.JS.ScaleUpPaths(children_paths, upscale)
         
         cpr = new ClipperLib.Clipper()

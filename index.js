@@ -16,7 +16,7 @@
 
   vis = svg.append('g');
 
-  map = vis.append('g').attr('transform', "translate(" + (svg_bbox.width / 2) + "," + (svg_bbox.height / 2) + "), scale(" + global_scale + "), scale(1," + (1 / Math.sqrt(3)) + "), rotate(45)");
+  map = vis.append('g').attr('transform', "translate(" + (svg_bbox.width / 2) + "," + (svg_bbox.height / 2) + "), scale(" + global_scale + ")");
 
   /* side map (view from the side)
   */
@@ -42,8 +42,8 @@
     translation = zoom.translate();
     scale = zoom.scale();
     vis.attr('transform', "translate(" + translation + ")scale(" + scale + ")");
-    lod_update(scale);
-    return tooltip.attr('font-size', 16 / scale / global_scale);
+    tooltip.attr('transform', "scale(" + (1 / scale) + ")");
+    return lod_update(scale);
   });
 
   /* bind the zoom behavior to the main SVG
@@ -124,7 +124,7 @@
     */
     console.debug('Computing the Space-Filling Curve layout...');
     scale = 26;
-    sfc_layout.displace(leaves, sfc_layout.HILBERT, scale, 0);
+    sfc_layout.displace(leaves, sfc_layout.HILBERT, scale, scale * 1 / Math.sqrt(3), Math.PI / 4);
     /* compute also the position of internal nodes
     */
     console.debug('Computing the position of internal nodes...');
@@ -152,25 +152,25 @@
     /* translate cells to label font size
     */
     cells2fontsize = d3.scale.pow().exponent(0.4).domain([1, leaves.length]).range([4, 200]);
+    console.debug('Computing jigsaw treemap...');
     /* compute all the internal nodes regions
     */
-    jigsaw.treemap(tree, scale, jigsaw.SQUARE_CELL);
+    jigsaw.treemap(tree, scale, jigsaw.ISO_CELL);
+    console.debug('Drawing...');
     /* define the level zero region (the land)
     */
     defs = svg.append('defs');
-    defs.append('path').attr('id', 'land').attr('d', jigsaw.get_svg_path(tree.region));
     /* faux land glow (using filters takes too much resources)
     */
     /* draw the cells
     */
-    cells = map.selectAll('.cell').data(leaves).enter().append('rect').attr('class', 'cell').attr('x', function(d) {
-      return d.x - scale / 2;
-    }).attr('y', function(d) {
-      return d.y - scale / 2;
-    }).attr('width', scale).attr('height', scale).attr('fill', function(d) {
+    cells = map.selectAll('.cell').data(leaves).enter().append('path').attr('class', 'cell').attr('d', jigsaw.iso_generate_svg_path(scale)).attr('transform', function(d) {
+      return "translate(" + d.x + "," + d.y + ")";
+    }).attr('fill', function(d) {
       return depth_color(d.depth);
     }).on('mouseenter', function(d) {
-      return tooltip.attr('transform', "translate(" + d.x + "," + (d.y - scale * 2) + "), rotate(-45), scale(1," + (Math.sqrt(3)) + ")").text("" + d.lemma + " [" + d.sensenum + "]");
+      tooltip_g.attr('transform', "translate(" + d.x + "," + (d.y - scale * 0.5) + ")");
+      return tooltip.text("" + d.lemma + " [" + d.sensenum + "]");
     }).on('mouseleave', function() {
       return tooltip.text('');
     });
@@ -201,7 +201,7 @@
         return 2.5;
       }
     }).attr('dy', '0.35em').attr('transform', function(d) {
-      return "translate(" + d.x + "," + d.y + "), rotate(-45), scale(1," + (Math.sqrt(3)) + ")";
+      return "translate(" + d.x + "," + d.y + ")";
     }).text(function(d) {
       return "" + d.lemma;
     }).attr('font-weight', function(d) {
@@ -219,7 +219,8 @@
     */
     /* TOOLTIP
     */
-    this.tooltip = map.append('text').attr('class', 'tooltip').attr('font-size', 16 / global_scale);
+    this.tooltip_g = map.append('g');
+    this.tooltip = tooltip_g.append('text').attr('class', 'tooltip').attr('dy', '-0.35em').attr('font-size', 16 / global_scale);
     /* LOD
     */
     /* update Level Of Detail
@@ -236,9 +237,11 @@
           }
         });
         if (z > 20) {
-          return leaf_labels.attr('display', 'inline');
+          leaf_labels.attr('display', 'inline');
+          return tooltip.attr('display', 'none');
         } else {
-          return leaf_labels.attr('display', 'none');
+          leaf_labels.attr('display', 'none');
+          return tooltip.attr('display', 'inline');
         }
       }
     };

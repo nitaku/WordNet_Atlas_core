@@ -18,7 +18,7 @@ fractalize = (config) ->
     return output
     
 ### execute a curve string and return all the generated points ###
-execute = (curve_string, angle, scale, orientation) ->
+execute = (curve_string, angle, scale_x, scale_y, orientation) ->
     points = [{x: 0, y: 0}]
     
     for char in curve_string
@@ -29,8 +29,8 @@ execute = (curve_string, angle, scale, orientation) ->
         else if char == 'F'
             last_point = points[points.length-1]
             points.push {
-                x: last_point.x + scale * Math.cos(orientation),
-                y: last_point.y + scale * Math.sin(orientation)
+                x: last_point.x + scale_x * Math.cos(orientation),
+                y: last_point.y + scale_y * Math.sin(orientation)
             }
             
     return points
@@ -55,8 +55,9 @@ window.sfc_layout = {
             A: '-BF+AFA+FB-'
             B: '+AF-BFB-FA+'
     }
-    displace: (seq, curve_cfg, scale, orientation) ->
-        scale = if scale? then scale else 10
+    displace: (seq, curve_cfg, scale_x, scale_y, orientation) ->
+        scale_x = if scale_x? then scale_x else 10
+        scale_y = if scale_y? then scale_y else 10
         orientation = if orientation? then orientation else 0
         
         ### create the minimal curve that can accommodate the whole sequence ###
@@ -69,7 +70,7 @@ window.sfc_layout = {
             rules: curve_cfg.rules
             
         ### execute the string, producing the actual points of the curve ###
-        curve = execute(curve_string, curve_cfg.angle, scale, orientation)
+        curve = execute(curve_string, curve_cfg.angle, scale_x, scale_y, orientation)
         
         ### stores the coordinates in the given sequence ###
         for [d,point] in zip(seq, curve)

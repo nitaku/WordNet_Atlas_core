@@ -17,7 +17,7 @@ svg_bbox = svg[0][0].getBoundingClientRect()
 global_scale = 0.2
 vis = svg.append('g')
 map = vis.append('g')
-    .attr('transform', "translate(#{svg_bbox.width/2},#{svg_bbox.height/2}), scale(#{global_scale}), scale(1,#{1/Math.sqrt(3)}), rotate(45)")
+    .attr('transform', "translate(#{svg_bbox.width/2},#{svg_bbox.height/2}), scale(#{global_scale})")
     # .attr('transform', "translate(#{(width-side_width)/2},#{(height-bottom_height)/2}), scale(#{global_scale}), scale(1,#{1/Math.sqrt(3)}), rotate(45)")
     
 ### side map (view from the side) ###
@@ -49,7 +49,7 @@ map = vis.append('g')
     # .attr('width', side_width)
     # .attr('height', bottom_height)
     # .attr('fill', 'white')
-
+    
     
 ### ZUI ###
 
@@ -64,8 +64,8 @@ zoom = d3.behavior.zoom()
         vis.attr('transform', "translate(#{translation})scale(#{scale})")
         # side.attr('transform', "translate(0, #{translation[1]})scale(1,#{zoom.scale()})")
         # bottom.attr('transform', "translate(#{translation[0]}, 0)scale(#{zoom.scale()},1)")
+        tooltip.attr('transform', "scale(#{1/scale})")
         lod_update(scale)
-        tooltip.attr('font-size', 16/scale/global_scale)
         
 ### bind the zoom behavior to the main SVG ###
 svg.call(zoom)
@@ -136,7 +136,7 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
     ### compute the space-filling curve layout ###
     console.debug 'Computing the Space-Filling Curve layout...'
     scale = 26
-    sfc_layout.displace(leaves, sfc_layout.HILBERT, scale, 0)
+    sfc_layout.displace(leaves, sfc_layout.HILBERT, scale, scale*1/Math.sqrt(3), Math.PI/4)
     
     ### compute also the position of internal nodes ###
     console.debug 'Computing the position of internal nodes...'
@@ -186,15 +186,17 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         .domain([1, leaves.length])
         .range([4,200])
         
+    console.debug 'Computing jigsaw treemap...'
     ### compute all the internal nodes regions ###
-    jigsaw.treemap(tree, scale, jigsaw.SQUARE_CELL)
-
+    jigsaw.treemap(tree, scale, jigsaw.ISO_CELL)
+    
+    console.debug 'Drawing...'
     ### define the level zero region (the land) ###
     defs = svg.append('defs')
 
-    defs.append('path')
-        .attr('id', 'land')
-        .attr('d', jigsaw.get_svg_path tree.region)
+    # defs.append('path')
+        # .attr('id', 'land')
+        # .attr('d', jigsaw.get_svg_path tree.region)
         
     ### faux land glow (using filters takes too much resources) ###
     # map.append('use')
@@ -208,16 +210,15 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
     ### draw the cells ###
     cells = map.selectAll('.cell')
         .data(leaves)
-      .enter().append('rect')
+      .enter().append('path')
         .attr('class', 'cell')
-        .attr('x', (d) -> d.x-scale/2)
-        .attr('y', (d) -> d.y-scale/2)
-        .attr('width', scale)
-        .attr('height', scale)
+        .attr('d', jigsaw.iso_generate_svg_path(scale))
+        .attr('transform', (d) -> "translate(#{d.x},#{d.y})")
         .attr('fill', (d) -> depth_color(d.depth))
         .on('mouseenter', (d) ->
+            tooltip_g
+                .attr('transform', "translate(#{d.x},#{d.y-scale*0.5})")
             tooltip
-                .attr('transform',"translate(#{d.x},#{d.y-scale*2}), rotate(-45), scale(1,#{Math.sqrt(3)})")
                 .text("#{d.lemma} [#{d.sensenum}]")
         )
         .on('mouseleave', () -> tooltip.text(''))
@@ -275,7 +276,7 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         .attr('class', 'leaf_label')
         .attr('font-size', (d) -> if d.is_core then 3.5 else 2.5)
         .attr('dy', '0.35em')
-        .attr('transform', (d) -> "translate(#{d.x},#{d.y}), rotate(-45), scale(1,#{Math.sqrt(3)})")
+        .attr('transform', (d) -> "translate(#{d.x},#{d.y})")
         .text((d) -> "#{d.lemma}")
         .attr('font-weight', (d) -> if d.is_core then 'bold' else 'normal')
         .attr('display', 'none')
@@ -329,8 +330,10 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         
         
     ### TOOLTIP ###
-    this.tooltip = map.append('text')
+    this.tooltip_g = map.append('g')
+    this.tooltip = tooltip_g.append('text')
         .attr('class', 'tooltip')
+        .attr('dy', '-0.35em')
         .attr('font-size', 16/global_scale)
         
     ### LOD ###
@@ -348,8 +351,10 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
                 
             if z > 20
                 leaf_labels.attr('display', 'inline')
+                tooltip.attr('display', 'none')
             else
                 leaf_labels.attr('display', 'none')
+                tooltip.attr('display', 'inline')
                 
     lod_update(1)
     

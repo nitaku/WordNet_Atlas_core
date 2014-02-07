@@ -35,7 +35,7 @@ html, body {
   shape-rendering: crispEdges;
 }
 .cell:hover {
-  fill: yellow;
+  fill: #fff373;
 }
 
 .region {
@@ -89,5 +89,4 @@ html, body {
   font-family: "Lacuna";
   fill: #333333;
   pointer-events: none;
-  font-weight: bold;
 }

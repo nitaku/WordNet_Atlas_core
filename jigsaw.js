@@ -12,6 +12,12 @@
       a = scale / 2;
       return "M" + (-a) + " " + (-a) + " L" + (-a) + " " + a + " L" + a + " " + a + " L" + a + " " + (-a) + " Z";
     },
+    iso_generate_svg_path: function(scale) {
+      var rx, ry;
+      rx = scale * Math.sqrt(2) / 2;
+      ry = scale * Math.sqrt(2) / (2 * Math.sqrt(3));
+      return "M" + 0 + " " + (-ry) + " L" + rx + " " + 0 + " L" + 0 + " " + ry + " L" + (-rx) + " " + 0 + " Z";
+    },
     HEX_CELL: function(node, scale) {
       var a, r, region;
       a = scale / 2;
@@ -63,6 +69,28 @@
       ];
       return region;
     },
+    ISO_CELL: function(node, scale) {
+      var region, rx, ry;
+      rx = scale * Math.sqrt(2) / 2;
+      ry = scale * Math.sqrt(2) / (2 * Math.sqrt(3));
+      return region = [
+        [
+          {
+            X: node.x,
+            Y: node.y - ry
+          }, {
+            X: node.x + rx,
+            Y: node.y
+          }, {
+            X: node.x,
+            Y: node.y + ry
+          }, {
+            X: node.x - rx,
+            Y: node.y
+          }
+        ]
+      ];
+    },
     treemap: function(node, scale, base) {
       var child, children_paths, cpr, upscale;
       if (!(node.children != null)) {
@@ -81,7 +109,7 @@
       })()).reduce(function(a, d) {
         return a.concat(d);
       });
-      upscale = 100;
+      upscale = 1000;
       ClipperLib.JS.ScaleUpPaths(children_paths, upscale);
       cpr = new ClipperLib.Clipper();
       cpr.AddPaths(children_paths, ClipperLib.PolyType.ptSubject, true);

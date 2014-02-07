@@ -3,49 +3,29 @@
 */
 
 (function() {
-  var bottom, bottom_height, bottom_map, global_scale, height, map, side, side_map, side_width, svg, vis, width, zoom;
+  var global_scale, map, svg, svg_bbox, vis, zoom;
 
-  width = 1024;
+  svg = d3.select('body').append('svg').attr('width', '100%').attr('height', '100%');
 
-  height = 620;
-
-  side_width = 80;
-
-  bottom_height = 80;
-
-  svg = d3.select('body').append('svg').attr('width', width).attr('height', height);
+  svg_bbox = svg[0][0].getBoundingClientRect();
 
   /* main visualization (map view from the top)
   */
 
-  global_scale = 0.1;
+  global_scale = 0.2;
 
   vis = svg.append('g');
 
-  map = vis.append('g').attr('transform', "translate(" + ((width - side_width) / 2) + "," + ((height - bottom_height) / 2) + "), scale(" + global_scale + ")");
+  map = vis.append('g').attr('transform', "translate(" + (svg_bbox.width / 2) + "," + (svg_bbox.height / 2) + "), scale(" + global_scale + "), scale(1,0.5), rotate(45)");
 
   /* side map (view from the side)
   */
 
-  svg.append('rect').attr('class', 'panel').attr('width', side_width).attr('height', height).attr('transform', "translate(" + (width - side_width) + ",0)");
-
-  side = svg.append('g');
-
-  side_map = side.append('g').attr('transform', "translate(" + (width - side_width) + "," + ((height - bottom_height) / 2) + "), scale(1," + global_scale + ")");
-
   /* bottom map (view from the front)
   */
 
-  svg.append('rect').attr('class', 'panel').attr('width', width).attr('height', bottom_height).attr('transform', "translate(0," + (height - bottom_height) + ")");
-
-  bottom = svg.append('g');
-
-  bottom_map = bottom.append('g').attr('transform', "translate(" + ((width - side_width) / 2) + "," + (height - bottom_height) + "), scale(" + global_scale + ",1)");
-
   /* hide the bottom-right corner
   */
-
-  svg.append('rect').attr('x', width - side_width).attr('y', height - bottom_height).attr('width', side_width).attr('height', bottom_height).attr('fill', 'white');
 
   /* ZUI
   */
@@ -62,8 +42,6 @@
     translation = zoom.translate();
     scale = zoom.scale();
     vis.attr('transform', "translate(" + translation + ")scale(" + scale + ")");
-    side.attr('transform', "translate(0, " + translation[1] + ")scale(1," + (zoom.scale()) + ")");
-    bottom.attr('transform', "translate(" + translation[0] + ", 0)scale(" + (zoom.scale()) + ",1)");
     return lod_update(scale);
   });
 
@@ -82,7 +60,7 @@
     */
     /* resolve node IDs (not optimized at all!)
     */
-    var cells, cells2fontsize, defs, depth_color, front_range, front_step, hierarchy, l, labels, last_z, leaves, margin, n, nodes, projs, regions, scale, side_range, side_step, tree, whiten, whiteness, _i, _j, _k, _l, _len, _len2, _len3, _len4, _ref, _ref2, _ref3;
+    var cells, cells2fontsize, defs, depth_color, hierarchy, l, leaf_labels, leaves, n, nodes, projs, regions, scale, tree, whiten, whiteness, _i, _j, _k, _l, _len, _len2, _len3, _len4, _ref, _ref2, _ref3;
     console.debug('Objectifying the graph and constructing the tree...');
     _ref = graph.links;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
@@ -202,7 +180,7 @@
     */
     regions = map.selectAll('.region').data(nodes.filter(function(d) {
       return d.type === 'synset';
-    }).reverse()).enter().append('path').attr('class', 'region').attr('d', function(d) {
+    })).enter().append('path').attr('class', 'region').attr('d', function(d) {
       return jigsaw.get_svg_path(d.region);
     });
     /* draw the land border (above cells and boundaries)
@@ -214,103 +192,52 @@
     */
     /* draw labels
     */
-    labels = map.selectAll('.label').data(nodes.filter(function(d) {
-      return d.type === 'synset';
-    })).enter().append('text').attr('class', 'label').attr('font-size', function(d) {
-      return cells2fontsize(d.leaf_descendants.length);
-    }).attr('dy', '0.35em').attr('transform', function(d) {
-      return "translate(" + d.x + "," + d.y + ")";
-    }).text(function(d) {
-      var s;
-      return ((function() {
-        var _len5, _m, _ref4, _results;
-        _ref4 = d.senses;
-        _results = [];
-        for (_m = 0, _len5 = _ref4.length; _m < _len5; _m++) {
-          s = _ref4[_m];
-          _results.push(s.lemma);
-        }
-        return _results;
-      })()).join(', ');
-    });
     /* draw the leaf labels
     */
+    leaf_labels = map.selectAll('.leaf_label').data(leaves).enter().append('text').attr('class', 'leaf_label').attr('font-size', function(d) {
+      if (d.is_core) {
+        return 3.5;
+      } else {
+        return 2.5;
+      }
+    }).attr('dy', '0.35em').attr('transform', function(d) {
+      return "translate(" + d.x + "," + d.y + "), rotate(-45), scale(1,2)";
+    }).text(function(d) {
+      return "" + d.lemma;
+    }).attr('font-weight', function(d) {
+      if (d.is_core) {
+        return 'bold';
+      } else {
+        return 'normal';
+      }
+    }).attr('display', 'none');
     /* ORTHOGONAL PROJECTIONS
     */
     /* FIXME define a width scale for leaf depth
     */
-    margin = 8;
-    side_range = side_width - margin * 2;
-    side_step = side_range / (tree.height - 1);
-    side_map.selectAll('.proj_node').data(projs.side).enter().append('rect').attr('class', 'proj_node').attr('x', function(d) {
-      return margin + side_range * (d.depth - 1) / (tree.height - 1);
-    }).attr('y', function(d) {
-      return d.y - scale / 2;
-    }).attr('width', side_step).attr('height', scale).attr('fill', function(d) {
-      return depth_color(d.depth);
-    }).attr('stroke', function(d) {
-      return depth_color(d.depth);
-    });
-    front_range = bottom_height - margin * 2;
-    front_step = front_range / (tree.height - 1);
-    bottom_map.selectAll('.proj_node').data(projs.front).enter().append('rect').attr('class', 'proj_node').attr('x', function(d) {
-      return d.x - scale / 2;
-    }).attr('y', function(d) {
-      return margin + front_range * (d.depth - 1) / (tree.height - 1);
-    }).attr('width', scale).attr('height', front_step).attr('fill', function(d) {
-      return depth_color(d.depth);
-    }).attr('stroke', function(d) {
-      return depth_color(d.depth);
-    });
     /* capitals
     */
-    map.selectAll('.capital').data(nodes.filter(function(d) {
-      var _ref4;
-      return d.type === 'synset' && ((_ref4 = d.depth) === 0 || _ref4 === 1);
-    })).enter().append('g').attr('class', 'capital').selectAll('.capital_cell').data(function(d) {
-      return d.senses;
-    }).enter().append('rect').attr('class', 'capital_cell').attr('x', function(d) {
-      return d.x - scale / 2;
-    }).attr('y', function(d) {
-      return d.y - scale / 2;
-    }).attr('width', scale).attr('height', scale);
     /* LOD
     */
     /* update Level Of Detail
     */
-    last_z = -1;
     this.lod_update = function(z) {
-      var th_depth;
-      th_depth = Math.floor(z / 2) + 1;
-      if (th_depth !== Math.floor(last_z / 2) + 1) {
+      var iz;
+      iz = Math.floor(z);
+      if (iz % 2 === 1) {
         regions.attr('display', function(d) {
-          if (d.depth <= th_depth) {
-            return 'inline';
-          } else {
-            return 'none';
-          }
-        }).attr('stroke-width', function(d) {
-          if (d.depth < th_depth) {
-            return '2px';
-          } else {
-            return '1px';
-          }
-        });
-        labels.attr('fill-opacity', function(d) {
-          if (d.depth < th_depth) {
-            return 0.2;
-          } else {
-            return 1;
-          }
-        }).attr('display', function(d) {
-          if (d.depth <= th_depth) {
+          if (d.leaf_descendants.length * z * z * z > 5000) {
             return 'inline';
           } else {
             return 'none';
           }
         });
+        if (z > 20) {
+          return leaf_labels.attr('display', 'inline');
+        } else {
+          return leaf_labels.attr('display', 'none');
+        }
       }
-      return last_z = z;
     };
     return lod_update(1);
   });

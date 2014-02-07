@@ -1,51 +1,54 @@
 
 ### GLOBAL SETTINGS, SVG and panels ###
 
-width = 1024
-height = 620
+# width = 1024
+# height = 620
 
-side_width = 80
-bottom_height = 80
+# side_width = 80
+# bottom_height = 80
 
 svg = d3.select('body').append('svg')
-    .attr('width', width)
-    .attr('height', height)
+    .attr('width', '100%')
+    .attr('height', '100%')
     
+svg_bbox = svg[0][0].getBoundingClientRect()
+
 ### main visualization (map view from the top) ###
-global_scale = 0.1
+global_scale = 0.2
 vis = svg.append('g')
 map = vis.append('g')
-    .attr('transform', "translate(#{(width-side_width)/2},#{(height-bottom_height)/2}), scale(#{global_scale})")
+    .attr('transform', "translate(#{svg_bbox.width/2},#{svg_bbox.height/2}), scale(#{global_scale}), scale(1,0.5), rotate(45)")
+    # .attr('transform', "translate(#{(width-side_width)/2},#{(height-bottom_height)/2}), scale(#{global_scale}), scale(1,0.5), rotate(45)")
     
 ### side map (view from the side) ###
-svg.append('rect')
-    .attr('class', 'panel')
-    .attr('width', side_width)
-    .attr('height', height)
-    .attr('transform', "translate(#{width-side_width},0)")
+# svg.append('rect')
+    # .attr('class', 'panel')
+    # .attr('width', side_width)
+    # .attr('height', height)
+    # .attr('transform', "translate(#{width-side_width},0)")
     
-side = svg.append('g')
-side_map = side.append('g')
-    .attr('transform', "translate(#{width-side_width},#{(height-bottom_height)/2}), scale(1,#{global_scale})")
+# side = svg.append('g')
+# side_map = side.append('g')
+    # .attr('transform', "translate(#{width-side_width},#{(height-bottom_height)/2}), scale(1,#{global_scale})")
     
 ### bottom map (view from the front) ###
-svg.append('rect')
-    .attr('class', 'panel')
-    .attr('width', width)
-    .attr('height', bottom_height)
-    .attr('transform', "translate(0,#{height-bottom_height})")
+# svg.append('rect')
+    # .attr('class', 'panel')
+    # .attr('width', width)
+    # .attr('height', bottom_height)
+    # .attr('transform', "translate(0,#{height-bottom_height})")
     
-bottom = svg.append('g')
-bottom_map = bottom.append('g')
-    .attr('transform', "translate(#{(width-side_width)/2},#{height-bottom_height}), scale(#{global_scale},1)")
+# bottom = svg.append('g')
+# bottom_map = bottom.append('g')
+    # .attr('transform', "translate(#{(width-side_width)/2},#{height-bottom_height}), scale(#{global_scale},1)")
     
 ### hide the bottom-right corner ###
-svg.append('rect')
-    .attr('x', width-side_width)
-    .attr('y', height-bottom_height)
-    .attr('width', side_width)
-    .attr('height', bottom_height)
-    .attr('fill', 'white')
+# svg.append('rect')
+    # .attr('x', width-side_width)
+    # .attr('y', height-bottom_height)
+    # .attr('width', side_width)
+    # .attr('height', bottom_height)
+    # .attr('fill', 'white')
 
     
 ### ZUI ###
@@ -59,8 +62,8 @@ zoom = d3.behavior.zoom()
         translation = zoom.translate()
         scale = zoom.scale()
         vis.attr('transform', "translate(#{translation})scale(#{scale})")
-        side.attr('transform', "translate(0, #{translation[1]})scale(1,#{zoom.scale()})")
-        bottom.attr('transform', "translate(#{translation[0]}, 0)scale(#{zoom.scale()},1)")
+        # side.attr('transform', "translate(0, #{translation[1]})scale(1,#{zoom.scale()})")
+        # bottom.attr('transform', "translate(#{translation[0]}, 0)scale(#{zoom.scale()},1)")
         lod_update(scale)
         
 ### bind the zoom behavior to the main SVG ###
@@ -214,7 +217,7 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         
     ### draw boundaries ###
     regions = map.selectAll('.region')
-        .data(nodes.filter((d)->d.type is 'synset').reverse()) # draw regions in reverse, to avoid boundary overwrite
+        .data(nodes.filter((d)->d.type is 'synset'))
       .enter().append('path')
         .attr('class', 'region')
         .attr('d', (d) -> jigsaw.get_svg_path d.region)
@@ -233,7 +236,7 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         
     ### draw the graph links ###
     # map.selectAll('.graph_link')
-        # .data(graph.links)
+        # .data(graph.links.filter((d)->not d.is_tree_link))
       # .enter().append('line')
         # .attr('class', 'graph_link')
         # .attr('x1', (d)->d.source.x)
@@ -243,90 +246,91 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         # .attr('stroke', (d)->if d.is_tree_link then 'teal' else 'orange')
         
     ### draw labels ###
-    labels = map.selectAll('.label')
-        .data(nodes.filter((d)->d.type is 'synset'))
-      .enter().append('text')
-        .attr('class', 'label')
-        .attr('font-size', (d) -> cells2fontsize(d.leaf_descendants.length))
-        .attr('dy', '0.35em')
-        .attr('transform', (d) -> "translate(#{d.x},#{d.y})")
-        .text((d) -> (s.lemma for s in d.senses).join(', '))
-        
-    ### draw the leaf labels ###
-    # leaf_labels = map.selectAll('.leaf_label')
-        # .data(leaves)
+    # labels = map.selectAll('.label')
+        # .data(nodes.filter((d)->d.type is 'synset'))
       # .enter().append('text')
-        # .attr('class', 'leaf_label')
-        # .attr('font-size', '2.5')
+        # .attr('class', 'label')
+        # .attr('font-size', (d) -> cells2fontsize(d.leaf_descendants.length))
         # .attr('dy', '0.35em')
         # .attr('transform', (d) -> "translate(#{d.x},#{d.y})")
-        # .text((d) -> "#{d.lemma}[#{d.sensenum}]")
-        # .attr('font-weight', (d) -> if d.is_core then 'bold' else 'normal')
-        # .attr('display', 'none')
+        # .text((d) -> (s.lemma for s in d.senses).join(', '))
+        
+    ### draw the leaf labels ###
+    leaf_labels = map.selectAll('.leaf_label')
+        .data(leaves)
+      .enter().append('text')
+        .attr('class', 'leaf_label')
+        .attr('font-size', (d) -> if d.is_core then 3.5 else 2.5)
+        .attr('dy', '0.35em')
+        .attr('transform', (d) -> "translate(#{d.x},#{d.y}), rotate(-45), scale(1,2)")
+        .text((d) -> "#{d.lemma}")
+        .attr('font-weight', (d) -> if d.is_core then 'bold' else 'normal')
+        .attr('display', 'none')
         
         
     ### ORTHOGONAL PROJECTIONS ###
 
     ### FIXME define a width scale for leaf depth ###
-    margin = 8
-    side_range = side_width - margin*2
-    side_step = side_range / (tree.height-1)
+    # margin = 8
+    # side_range = side_width - margin*2
+    # side_step = side_range / (tree.height-1)
 
-    side_map.selectAll('.proj_node')
-        .data(projs.side)
-      .enter().append('rect')
-        .attr('class', 'proj_node')
-        .attr('x', (d) -> margin + side_range*(d.depth-1)/(tree.height-1))
-        .attr('y', (d) -> d.y-scale/2)
-        .attr('width', side_step)
-        .attr('height', scale)
-        .attr('fill', (d) -> depth_color(d.depth))
-        .attr('stroke', (d) -> depth_color(d.depth))
+    # side_map.selectAll('.proj_node')
+        # .data(projs.side)
+      # .enter().append('rect')
+        # .attr('class', 'proj_node')
+        # .attr('x', (d) -> margin + side_range*(d.depth-1)/(tree.height-1))
+        # .attr('y', (d) -> d.y-scale/2)
+        # .attr('width', side_step)
+        # .attr('height', scale)
+        # .attr('fill', (d) -> depth_color(d.depth))
+        # .attr('stroke', (d) -> depth_color(d.depth))
         
-    front_range = bottom_height - margin*2
-    front_step = front_range / (tree.height-1)
+    # front_range = bottom_height - margin*2
+    # front_step = front_range / (tree.height-1)
 
-    bottom_map.selectAll('.proj_node')
-        .data(projs.front)
-      .enter().append('rect')
-        .attr('class', 'proj_node')
-        .attr('x', (d) -> d.x-scale/2)
-        .attr('y', (d) -> margin + front_range*(d.depth-1)/(tree.height-1))
-        .attr('width', scale)
-        .attr('height', front_step)
-        .attr('fill', (d) -> depth_color(d.depth))
-        .attr('stroke', (d) -> depth_color(d.depth))
+    # bottom_map.selectAll('.proj_node')
+        # .data(projs.front)
+      # .enter().append('rect')
+        # .attr('class', 'proj_node')
+        # .attr('x', (d) -> d.x-scale/2)
+        # .attr('y', (d) -> margin + front_range*(d.depth-1)/(tree.height-1))
+        # .attr('width', scale)
+        # .attr('height', front_step)
+        # .attr('fill', (d) -> depth_color(d.depth))
+        # .attr('stroke', (d) -> depth_color(d.depth))
         
     ### capitals ###
-    map.selectAll('.capital')
-        .data(nodes.filter((d) -> d.type is 'synset' and d.depth in [0,1]))
-      .enter().append('g')
-        .attr('class', 'capital')
-      .selectAll('.capital_cell')
-        .data((d) -> d.senses)
-      .enter().append('rect')
-        .attr('class', 'capital_cell')
-        .attr('x', (d) -> d.x-scale/2)
-        .attr('y', (d) -> d.y-scale/2)
-        .attr('width', scale)
-        .attr('height', scale)
+    # map.selectAll('.capital')
+        # .data(nodes.filter((d) -> d.type is 'synset' and d.depth in [0,1]))
+      # .enter().append('g')
+        # .attr('class', 'capital')
+      # .selectAll('.capital_cell')
+        # .data((d) -> d.senses)
+      # .enter().append('rect')
+        # .attr('class', 'capital_cell')
+        # .attr('x', (d) -> d.x-scale/2)
+        # .attr('y', (d) -> d.y-scale/2)
+        # .attr('width', scale)
+        # .attr('height', scale)
         
     ### LOD ###
     ### update Level Of Detail ###
-    last_z = -1
-    
     this.lod_update = (z) ->
-        th_depth = Math.floor(z/2)+1
-        if th_depth != Math.floor(last_z/2)+1
+        # lod is not always updated
+        iz = Math.floor(z)
+        if iz % 2 == 1
             regions
-                .attr('display', (d) -> if d.depth <= th_depth then 'inline' else 'none')
-                .attr('stroke-width', (d) -> if d.depth < th_depth then '2px' else '1px')
+                .attr('display', (d) -> if d.leaf_descendants.length*z*z*z > 5000 then 'inline' else 'none')
                 
-            labels
-                .attr('fill-opacity', (d) -> if d.depth < th_depth then 0.2 else 1)
-                .attr('display', (d) -> if d.depth <= th_depth then 'inline' else 'none')
+            # labels
+                # .attr('fill-opacity', (d) -> if d.leaf_descendants.length*z*z*z > 10000 then 0.2 else 1)
+                # .attr('display', (d) -> if d.leaf_descendants.length*z*z*z > 5000 then 'inline' else 'none')
                 
-        last_z = z
-        
+            if z > 20
+                leaf_labels.attr('display', 'inline')
+            else
+                leaf_labels.attr('display', 'none')
+                
     lod_update(1)
     

@@ -17,8 +17,8 @@ svg_bbox = svg[0][0].getBoundingClientRect()
 global_scale = 0.2
 vis = svg.append('g')
 map = vis.append('g')
-    .attr('transform', "translate(#{svg_bbox.width/2},#{svg_bbox.height/2}), scale(#{global_scale}), scale(1,0.5), rotate(45)")
-    # .attr('transform', "translate(#{(width-side_width)/2},#{(height-bottom_height)/2}), scale(#{global_scale}), scale(1,0.5), rotate(45)")
+    .attr('transform', "translate(#{svg_bbox.width/2},#{svg_bbox.height/2}), scale(#{global_scale}), scale(1,#{1/Math.sqrt(3)}), rotate(45)")
+    # .attr('transform', "translate(#{(width-side_width)/2},#{(height-bottom_height)/2}), scale(#{global_scale}), scale(1,#{1/Math.sqrt(3)}), rotate(45)")
     
 ### side map (view from the side) ###
 # svg.append('rect')
@@ -65,6 +65,7 @@ zoom = d3.behavior.zoom()
         # side.attr('transform', "translate(0, #{translation[1]})scale(1,#{zoom.scale()})")
         # bottom.attr('transform', "translate(#{translation[0]}, 0)scale(#{zoom.scale()},1)")
         lod_update(scale)
+        tooltip.attr('font-size', 16/scale/global_scale)
         
 ### bind the zoom behavior to the main SVG ###
 svg.call(zoom)
@@ -153,11 +154,11 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         # .y((d) -> d.y)
         
     ### group leaves by depth ###
-    console.debug 'Computing the orthogonal projections for depthmaps...'
-    projs = {
-        front: orthoproj.depth_projs(leaves, 'x'),
-        side: orthoproj.depth_projs(leaves, 'y')
-    }
+    # console.debug 'Computing the orthogonal projections for depthmaps...'
+    # projs = {
+        # front: orthoproj.depth_projs(leaves, 'x'),
+        # side: orthoproj.depth_projs(leaves, 'y')
+    # }
     
     console.debug 'Almost ready to draw...'
     
@@ -196,13 +197,13 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         .attr('d', jigsaw.get_svg_path tree.region)
         
     ### faux land glow (using filters takes too much resources) ###
-    map.append('use')
-        .attr('class', 'land-glow-outer')
-        .attr('xlink:href', '#land')
+    # map.append('use')
+        # .attr('class', 'land-glow-outer')
+        # .attr('xlink:href', '#land')
         
-    map.append('use')
-        .attr('class', 'land-glow-inner')
-        .attr('xlink:href', '#land')
+    # map.append('use')
+        # .attr('class', 'land-glow-inner')
+        # .attr('xlink:href', '#land')
         
     ### draw the cells ###
     cells = map.selectAll('.cell')
@@ -214,18 +215,29 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         .attr('width', scale)
         .attr('height', scale)
         .attr('fill', (d) -> depth_color(d.depth))
+        .on('mouseenter', (d) ->
+            tooltip
+                .attr('transform',"translate(#{d.x},#{d.y-scale*2}), rotate(-45), scale(1,#{Math.sqrt(3)})")
+                .text("#{d.lemma} [#{d.sensenum}]")
+        )
+        .on('mouseleave', () -> tooltip.text(''))
         
     ### draw boundaries ###
+    height2boundary_width = d3.scale.linear()
+        .domain([2,tree.height-1])
+        .range([0.2,10])
+        
     regions = map.selectAll('.region')
-        .data(nodes.filter((d)->d.type is 'synset'))
+        .data(nodes.filter((d)->d.type is 'synset' and d.depth > 0))
       .enter().append('path')
         .attr('class', 'region')
         .attr('d', (d) -> jigsaw.get_svg_path d.region)
+        .attr('stroke-width', (d) -> height2boundary_width(d.height))
         
     ### draw the land border (above cells and boundaries) ###
-    map.append('use')
-        .attr('class', 'land-fill')
-        .attr('xlink:href', '#land')
+    # map.append('use')
+        # .attr('class', 'land-fill')
+        # .attr('xlink:href', '#land')
         
     ### draw the graph links ###
     # map.selectAll('.graph_link')
@@ -236,7 +248,7 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         
     ### draw the graph links ###
     # map.selectAll('.graph_link')
-        # .data(graph.links.filter((d)->not d.is_tree_link))
+        # .data(graph.links.filter((d)->d.is_tree_link and d.source.depth < 2))
       # .enter().append('line')
         # .attr('class', 'graph_link')
         # .attr('x1', (d)->d.source.x)
@@ -244,6 +256,7 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         # .attr('x2', (d)->d.target.x)
         # .attr('y2', (d)->d.target.y)
         # .attr('stroke', (d)->if d.is_tree_link then 'teal' else 'orange')
+        # .attr('stroke-width', (d)->(tree.height-d.source.depth+1)*0.05)
         
     ### draw labels ###
     # labels = map.selectAll('.label')
@@ -262,7 +275,7 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         .attr('class', 'leaf_label')
         .attr('font-size', (d) -> if d.is_core then 3.5 else 2.5)
         .attr('dy', '0.35em')
-        .attr('transform', (d) -> "translate(#{d.x},#{d.y}), rotate(-45), scale(1,2)")
+        .attr('transform', (d) -> "translate(#{d.x},#{d.y}), rotate(-45), scale(1,#{Math.sqrt(3)})")
         .text((d) -> "#{d.lemma}")
         .attr('font-weight', (d) -> if d.is_core then 'bold' else 'normal')
         .attr('display', 'none')
@@ -313,6 +326,12 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         # .attr('y', (d) -> d.y-scale/2)
         # .attr('width', scale)
         # .attr('height', scale)
+        
+        
+    ### TOOLTIP ###
+    this.tooltip = map.append('text')
+        .attr('class', 'tooltip')
+        .attr('font-size', 16/global_scale)
         
     ### LOD ###
     ### update Level Of Detail ###

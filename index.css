@@ -35,15 +35,12 @@ html, body {
   shape-rendering: crispEdges;
 }
 .cell:hover {
-  fill: white;
+  fill: yellow;
 }
 
 .region {
   fill: none;
-  stroke: #666666;
-  stroke-width: 1px;
-  vector-effect: non-scaling-stroke;
-  shape-rendering: crispEdges;
+  stroke: white;
 }
 
 @font-face {
@@ -65,9 +62,10 @@ html, body {
 }
 
 .graph_link {
-  stroke-width: 1;
   fill: none;
   pointer-events: none;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
 }
 
 .panel {
@@ -84,4 +82,12 @@ html, body {
   fill: white;
   stroke: black;
   stroke-width: 4px;
+}
+
+.tooltip {
+  text-anchor: middle;
+  font-family: "Lacuna";
+  fill: #333333;
+  pointer-events: none;
+  font-weight: bold;
 }

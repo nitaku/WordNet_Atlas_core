@@ -1,3 +1,9 @@
+@mixin halo($color)
+    text-shadow: -1px 0 $color, 0 1px $color, 1px 0 $color, 0 -1px $color
+    
+@mixin halo_double($color)
+    text-shadow: -2px 0 $color, 0 2px $color, 2px 0 $color, 0 -2px $color, -1px -1px $color, 1px -1px $color, 1px 1px $color, -1px 1px $color
+
 html, body
     width: 100%
     height: 100%
@@ -30,15 +36,11 @@ html, body
     shape-rendering: crispEdges
     
     &:hover
-        fill: white
+        fill: yellow
         
 .region
     fill: none
-    stroke: #666
-    stroke-width: 1px
-    
-    vector-effect: non-scaling-stroke
-    shape-rendering: crispEdges
+    stroke: white
     
 @font-face
     font-family: "Lacuna"
@@ -58,9 +60,10 @@ html, body
     user-select: none
     
 .graph_link
-    stroke-width: 1
     fill: none
     pointer-events: none
+    stroke-linecap: round
+    vector-effect: non-scaling-stroke
     
 .panel
     fill: white
@@ -74,4 +77,11 @@ html, body
     fill: white
     stroke: black
     stroke-width: 4px
+    
+.tooltip
+    text-anchor: middle
+    font-family: "Lacuna"
+    fill: #333
+    pointer-events: none
+    font-weight: bold
     

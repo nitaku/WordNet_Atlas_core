@@ -16,7 +16,7 @@
 
   vis = svg.append('g');
 
-  map = vis.append('g').attr('transform', "translate(" + (svg_bbox.width / 2) + "," + (svg_bbox.height / 2) + "), scale(" + global_scale + "), scale(1,0.5), rotate(45)");
+  map = vis.append('g').attr('transform', "translate(" + (svg_bbox.width / 2) + "," + (svg_bbox.height / 2) + "), scale(" + global_scale + "), scale(1," + (1 / Math.sqrt(3)) + "), rotate(45)");
 
   /* side map (view from the side)
   */
@@ -42,7 +42,8 @@
     translation = zoom.translate();
     scale = zoom.scale();
     vis.attr('transform', "translate(" + translation + ")scale(" + scale + ")");
-    return lod_update(scale);
+    lod_update(scale);
+    return tooltip.attr('font-size', 16 / scale / global_scale);
   });
 
   /* bind the zoom behavior to the main SVG
@@ -60,7 +61,7 @@
     */
     /* resolve node IDs (not optimized at all!)
     */
-    var cells, cells2fontsize, defs, depth_color, hierarchy, l, leaf_labels, leaves, n, nodes, projs, regions, scale, tree, whiten, whiteness, _i, _j, _k, _l, _len, _len2, _len3, _len4, _ref, _ref2, _ref3;
+    var cells, cells2fontsize, defs, depth_color, height2boundary_width, hierarchy, l, leaf_labels, leaves, n, nodes, regions, scale, tree, whiten, whiteness, _i, _j, _k, _l, _len, _len2, _len3, _len4, _ref, _ref2, _ref3;
     console.debug('Objectifying the graph and constructing the tree...');
     _ref = graph.links;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
@@ -132,11 +133,6 @@
     */
     /* group leaves by depth
     */
-    console.debug('Computing the orthogonal projections for depthmaps...');
-    projs = {
-      front: orthoproj.depth_projs(leaves, 'x'),
-      side: orthoproj.depth_projs(leaves, 'y')
-    };
     console.debug('Almost ready to draw...');
     /* define a color scale for leaf depth
     */
@@ -165,8 +161,6 @@
     defs.append('path').attr('id', 'land').attr('d', jigsaw.get_svg_path(tree.region));
     /* faux land glow (using filters takes too much resources)
     */
-    map.append('use').attr('class', 'land-glow-outer').attr('xlink:href', '#land');
-    map.append('use').attr('class', 'land-glow-inner').attr('xlink:href', '#land');
     /* draw the cells
     */
     cells = map.selectAll('.cell').data(leaves).enter().append('rect').attr('class', 'cell').attr('x', function(d) {
@@ -175,17 +169,23 @@
       return d.y - scale / 2;
     }).attr('width', scale).attr('height', scale).attr('fill', function(d) {
       return depth_color(d.depth);
+    }).on('mouseenter', function(d) {
+      return tooltip.attr('transform', "translate(" + d.x + "," + (d.y - scale * 2) + "), rotate(-45), scale(1," + (Math.sqrt(3)) + ")").text("" + d.lemma + " [" + d.sensenum + "]");
+    }).on('mouseleave', function() {
+      return tooltip.text('');
     });
     /* draw boundaries
     */
+    height2boundary_width = d3.scale.linear().domain([2, tree.height - 1]).range([0.2, 10]);
     regions = map.selectAll('.region').data(nodes.filter(function(d) {
-      return d.type === 'synset';
+      return d.type === 'synset' && d.depth > 0;
     })).enter().append('path').attr('class', 'region').attr('d', function(d) {
       return jigsaw.get_svg_path(d.region);
+    }).attr('stroke-width', function(d) {
+      return height2boundary_width(d.height);
     });
     /* draw the land border (above cells and boundaries)
     */
-    map.append('use').attr('class', 'land-fill').attr('xlink:href', '#land');
     /* draw the graph links
     */
     /* draw the graph links
@@ -201,7 +201,7 @@
         return 2.5;
       }
     }).attr('dy', '0.35em').attr('transform', function(d) {
-      return "translate(" + d.x + "," + d.y + "), rotate(-45), scale(1,2)";
+      return "translate(" + d.x + "," + d.y + "), rotate(-45), scale(1," + (Math.sqrt(3)) + ")";
     }).text(function(d) {
       return "" + d.lemma;
     }).attr('font-weight', function(d) {
@@ -217,6 +217,9 @@
     */
     /* capitals
     */
+    /* TOOLTIP
+    */
+    this.tooltip = map.append('text').attr('class', 'tooltip').attr('font-size', 16 / global_scale);
     /* LOD
     */
     /* update Level Of Detail

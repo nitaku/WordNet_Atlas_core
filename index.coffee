@@ -180,12 +180,6 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         # .domain([0, d3.max(nodes,(d)->d.size)])
         # .range([0,scale])
         
-    ### translate cells to label font size ###
-    cells2fontsize = d3.scale.pow()
-        .exponent(0.4)
-        .domain([1, leaves.length])
-        .range([4,200])
-        
     console.debug 'Computing jigsaw treemap...'
     ### compute all the internal nodes regions ###
     jigsaw.treemap(tree, scale, jigsaw.ISO_CELL)
@@ -219,7 +213,7 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
             tooltip_g
                 .attr('transform', "translate(#{d.x},#{d.y-scale*0.5})")
             tooltip
-                .text("#{d.lemma} [#{d.sensenum}]")
+                .text("#{d.lemma}")
         )
         .on('mouseleave', () -> tooltip.text(''))
         
@@ -259,15 +253,20 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         # .attr('stroke', (d)->if d.is_tree_link then 'teal' else 'orange')
         # .attr('stroke-width', (d)->(tree.height-d.source.depth+1)*0.05)
         
-    ### draw labels ###
-    # labels = map.selectAll('.label')
-        # .data(nodes.filter((d)->d.type is 'synset'))
-      # .enter().append('text')
-        # .attr('class', 'label')
-        # .attr('font-size', (d) -> cells2fontsize(d.leaf_descendants.length))
-        # .attr('dy', '0.35em')
-        # .attr('transform', (d) -> "translate(#{d.x},#{d.y})")
-        # .text((d) -> (s.lemma for s in d.senses).join(', '))
+    ### draw region labels ###
+    cells2fontsize = d3.scale.pow()
+        .exponent(0.4)
+        .domain([1, leaves.length])
+        .range([2,150])
+        
+    region_labels = map.selectAll('.region_label')
+        .data(nodes.filter((d)->d.type is 'synset'))
+      .enter().append('text')
+        .attr('class', 'region_label')
+        .attr('font-size', (d) -> cells2fontsize(d.leaf_descendants.length))
+        .attr('dy', '0.35em')
+        .attr('transform', (d) -> "translate(#{d.x},#{d.y}), scale(1, #{1/Math.sqrt(3)}), rotate(45)")
+        .text((d) -> d.senses[0].lemma) # first sense is the most common
         
     ### draw the leaf labels ###
     leaf_labels = map.selectAll('.leaf_label')
@@ -338,23 +337,32 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         
     ### LOD ###
     ### update Level Of Detail ###
+    last_iz = -1
+    LEAF_Z = 13
+    
     this.lod_update = (z) ->
         # lod is not always updated
-        iz = Math.floor(z)
-        if iz % 2 == 1
+        Z_LEVELS = tree.height-2
+        iz = Math.floor(Z_LEVELS*(z)/(LEAF_Z-1))
+        console.log "z: #{z}   iz: #{iz}"
+        if iz != last_iz
             regions
-                .attr('display', (d) -> if d.leaf_descendants.length*z*z*z > 5000 then 'inline' else 'none')
-                
-            # labels
-                # .attr('fill-opacity', (d) -> if d.leaf_descendants.length*z*z*z > 10000 then 0.2 else 1)
                 # .attr('display', (d) -> if d.leaf_descendants.length*z*z*z > 5000 then 'inline' else 'none')
+                .attr('display', (d) -> if d.depth <= iz then 'inline' else 'none')
                 
-            if z > 20
+            region_labels
+                .attr('display', (d) -> if d.depth > iz then 'none' else 'inline')
+                .attr('fill-opacity', (d) -> if d.depth == iz then 0.5 else 0.1)
+                # .attr('display', (d) -> if d.leaf_descendants.length*z*z*z > 5000 then 'inline' else 'none')
+                # .attr('fill-opacity', (d) -> if d.leaf_descendants.length*z*z*z > 7000 then 0.5*7000/(d.leaf_descendants.length*z*z*z) else 0.5)
+                
+            if z >= LEAF_Z
                 leaf_labels.attr('display', 'inline')
                 tooltip.attr('display', 'none')
             else
                 leaf_labels.attr('display', 'none')
                 tooltip.attr('display', 'inline')
                 
+            last_iz = iz
     lod_update(1)
     

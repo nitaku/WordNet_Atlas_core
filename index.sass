@@ -46,7 +46,7 @@ html, body
     font-family: "Lacuna"
     src: url("lacuna.ttf")
     
-.label, .leaf_label
+.region_label, .leaf_label
     fill: #333
     text-anchor: middle
     pointer-events: none
@@ -58,6 +58,10 @@ html, body
     -moz-user-select: none
     -ms-user-select: none
     user-select: none
+    
+.region_label
+    fill: black
+    font-weight: bold
     
 .graph_link
     fill: none
@@ -82,5 +86,6 @@ html, body
     text-anchor: middle
     font-family: "Lacuna"
     fill: #333
+    font-weight: bold
     pointer-events: none
-    
+    @include halo(white)

@@ -59,19 +59,22 @@
   d3.json('wnen30_core_n_longest.json', function(graph) {
     /* objectify the graph
     */
-    /* resolve node IDs (not optimized at all!)
-    */
-    var LEAF_Z, cells, cells2fontsize, defs, depth2boundary_width, depth_color, hierarchy, l, last_iz, leaf_labels, leaves, n, nodes, old_highlighted_depth, region_labels, regions, scale, tree, whiten, whiteness, _i, _j, _k, _l, _len, _len2, _len3, _len4, _ref, _ref2, _ref3;
-    console.debug('Objectifying the graph and constructing the tree...');
-    _ref = graph.links;
+    var LEAF_Z, cells, cells2fontsize, defs, depth2boundary_width, depth_color, hierarchy, index, l, last_iz, leaf_labels, leaves, n, nodes, old_highlighted_depth, region_labels, regions, scale, tree, whiten, whiteness, _i, _j, _k, _len, _len2, _len3, _ref, _ref2;
+    console.debug('Indexing nodes...');
+    index = {};
+    _ref = graph.nodes;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-      l = _ref[_i];
-      _ref2 = graph.nodes;
-      for (_j = 0, _len2 = _ref2.length; _j < _len2; _j++) {
-        n = _ref2[_j];
-        if (l.source === n.id) l.source = n;
-        if (l.target === n.id) l.target = n;
-      }
+      n = _ref[_i];
+      index[n.id] = n;
+    }
+    console.debug('Objectifying the graph and constructing the tree...');
+    /* resolve node IDs
+    */
+    _ref2 = graph.links;
+    for (_j = 0, _len2 = _ref2.length; _j < _len2; _j++) {
+      l = _ref2[_j];
+      l.source = index[l.source];
+      l.target = index[l.target];
       /* convert the graph into a tree
       */
       if ((l.is_tree_link != null) && l.is_tree_link) {
@@ -88,19 +91,15 @@
     /* find the root of the tree
     */
     console.debug('Finding the root...');
-    _ref3 = graph.nodes;
-    for (_k = 0, _len3 = _ref3.length; _k < _len3; _k++) {
-      n = _ref3[_k];
-      if (n.id === 100001740) tree = n;
-    }
+    tree = index[100001740];
     console.debug('Computing d3 hierarchy layout...');
     hierarchy = d3.layout.hierarchy();
     nodes = hierarchy(tree);
     /* sort the senses by sensenum
     */
     console.debug('Sorting senses...');
-    for (_l = 0, _len4 = nodes.length; _l < _len4; _l++) {
-      n = nodes[_l];
+    for (_k = 0, _len3 = nodes.length; _k < _len3; _k++) {
+      n = nodes[_k];
       if (n.type === 'synset') {
         n.senses.sort(function(a, b) {
           return b.sensenum - a.sensenum;

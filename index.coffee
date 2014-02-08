@@ -77,16 +77,17 @@ console.debug 'Getting data...'
 d3.json 'wnen30_core_n_longest.json', (graph) ->
     
     ### objectify the graph ###
-    ### resolve node IDs (not optimized at all!) ###
+    console.debug 'Indexing nodes...'
+    index = {}
+    for n in graph.nodes
+        index[n.id] = n
+        
     console.debug 'Objectifying the graph and constructing the tree...'
+    ### resolve node IDs ###
     for l in graph.links
-        for n in graph.nodes
-            if l.source is n.id
-                l.source = n
-                
-            if l.target is n.id
-                l.target = n
-                
+        l.source = index[l.source]
+        l.target = index[l.target]
+        
         ### convert the graph into a tree ###
         if l.is_tree_link? and l.is_tree_link
             if not l.source.children?
@@ -104,10 +105,8 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
             
     ### find the root of the tree ###
     console.debug 'Finding the root...'
-    for n in graph.nodes
-        if n.id == 100001740 # this is the synsetid of 'entity'
-            tree = n
-            
+    tree = index[100001740] # this is the synsetid of 'entity'
+    
     console.debug 'Computing d3 hierarchy layout...'
     hierarchy = d3.layout.hierarchy()
     nodes = hierarchy(tree)

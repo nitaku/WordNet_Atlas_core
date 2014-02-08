@@ -61,7 +61,7 @@
     */
     /* resolve node IDs (not optimized at all!)
     */
-    var LEAF_Z, cells, cells2fontsize, defs, depth_color, height2boundary_width, hierarchy, l, last_iz, leaf_labels, leaves, n, nodes, region_labels, regions, scale, tree, whiten, whiteness, _i, _j, _k, _l, _len, _len2, _len3, _len4, _ref, _ref2, _ref3;
+    var LEAF_Z, cells, cells2fontsize, defs, depth2boundary_width, depth_color, hierarchy, l, last_iz, leaf_labels, leaves, n, nodes, old_highlighted_depth, region_labels, regions, scale, tree, whiten, whiteness, _i, _j, _k, _l, _len, _len2, _len3, _len4, _ref, _ref2, _ref3;
     console.debug('Objectifying the graph and constructing the tree...');
     _ref = graph.links;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
@@ -149,7 +149,7 @@
     */
     /* translate size to cell scale
     */
-    console.debug('Computing jigsaw treemap...');
+    console.debug('Computing the jigsaw treemap...');
     /* compute all the internal nodes regions
     */
     jigsaw.treemap(tree, scale, jigsaw.ISO_CELL);
@@ -173,13 +173,35 @@
     });
     /* draw boundaries
     */
-    height2boundary_width = d3.scale.linear().domain([2, tree.height - 1]).range([0.2, 10]);
+    depth2boundary_width = function(x) {
+      return (20 - 0.2) / Math.pow(2, x) + 0.2;
+    };
+    old_highlighted_depth = null;
     regions = map.selectAll('.region').data(nodes.filter(function(d) {
-      return d.type === 'synset' && d.depth > 0;
+      return d.type === 'synset';
+    }).sort(function(a, b) {
+      return b.depth - a.depth;
     })).enter().append('path').attr('class', 'region').attr('d', function(d) {
       return jigsaw.get_svg_path(d.region);
     }).attr('stroke-width', function(d) {
-      return height2boundary_width(d.height);
+      if (d.depth === 0) {
+        return depth2boundary_width(d.depth + 1);
+      } else {
+        return depth2boundary_width(d.depth);
+      }
+    }).attr('stroke', 'white').on('click', function(d) {
+      if (!(old_highlighted_depth != null) || old_highlighted_depth !== d.depth) {
+        regions.filter(function(r) {
+          return r.depth <= d.depth;
+        }).attr('stroke', '#444');
+        regions.filter(function(r) {
+          return r.depth > d.depth;
+        }).attr('stroke', 'white');
+        return old_highlighted_depth = d.depth;
+      } else {
+        regions.attr('stroke', 'white');
+        return old_highlighted_depth = null;
+      }
     });
     /* draw the land border (above cells and boundaries)
     */
@@ -238,7 +260,6 @@
       var Z_LEVELS, iz;
       Z_LEVELS = tree.height - 2;
       iz = Math.floor(Z_LEVELS * z / (LEAF_Z - 1));
-      console.log("z: " + z + "   iz: " + iz);
       if (iz !== last_iz) {
         regions.attr('display', function(d) {
           if (d.depth <= iz) {
@@ -248,22 +269,34 @@
           }
         });
         region_labels.attr('display', function(d) {
-          if (d.depth > iz) {
-            return 'none';
-          } else {
+          if (d.depth <= iz) {
             return 'inline';
+          } else {
+            return 'none';
           }
         }).attr('fill-opacity', function(d) {
           if (d.depth === iz) {
+            return 0.5;
+          } else if (d.height === 2) {
             return 0.5;
           } else {
             return 0.1;
           }
         });
         if (z >= LEAF_Z) {
+          region_labels.attr('fill-opacity', 0.1);
           leaf_labels.attr('display', 'inline');
           tooltip.attr('display', 'none');
         } else {
+          region_labels.attr('fill-opacity', function(d) {
+            if (d.depth === iz) {
+              return 0.5;
+            } else if (d.height === 2) {
+              return 0.5;
+            } else {
+              return 0.1;
+            }
+          });
           leaf_labels.attr('display', 'none');
           tooltip.attr('display', 'inline');
         }

@@ -180,7 +180,7 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         # .domain([0, d3.max(nodes,(d)->d.size)])
         # .range([0,scale])
         
-    console.debug 'Computing jigsaw treemap...'
+    console.debug 'Computing the jigsaw treemap...'
     ### compute all the internal nodes regions ###
     jigsaw.treemap(tree, scale, jigsaw.ISO_CELL)
     
@@ -218,16 +218,25 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         .on('mouseleave', () -> tooltip.text(''))
         
     ### draw boundaries ###
-    height2boundary_width = d3.scale.linear()
-        .domain([2,tree.height-1])
-        .range([0.2,10])
-        
+    depth2boundary_width = (x) -> (20-0.2)/Math.pow(2,x)+0.2
+    
+    old_highlighted_depth = null
     regions = map.selectAll('.region')
-        .data(nodes.filter((d)->d.type is 'synset' and d.depth > 0))
+        .data(nodes.filter((d)->d.type is 'synset').sort((a,b)->b.depth-a.depth)) # stack regions in depth order
       .enter().append('path')
         .attr('class', 'region')
         .attr('d', (d) -> jigsaw.get_svg_path d.region)
-        .attr('stroke-width', (d) -> height2boundary_width(d.height))
+        .attr('stroke-width', (d) -> if d.depth == 0 then depth2boundary_width(d.depth+1) else depth2boundary_width(d.depth)) # level zero boundary is equal to level one
+        .attr('stroke', 'white')
+        .on('click', (d) ->
+            if not old_highlighted_depth? or old_highlighted_depth != d.depth
+                regions.filter((r)->r.depth <= d.depth).attr('stroke', '#444')
+                regions.filter((r)->r.depth > d.depth).attr('stroke', 'white')
+                old_highlighted_depth = d.depth
+            else
+                regions.attr('stroke', 'white')
+                old_highlighted_depth = null
+        )
         
     ### draw the land border (above cells and boundaries) ###
     # map.append('use')
@@ -344,22 +353,24 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         # lod is not always updated
         Z_LEVELS = tree.height-2
         iz = Math.floor(Z_LEVELS*(z)/(LEAF_Z-1))
-        console.log "z: #{z}   iz: #{iz}"
+        # console.log "z: #{z}   iz: #{iz}"
         if iz != last_iz
             regions
                 # .attr('display', (d) -> if d.leaf_descendants.length*z*z*z > 5000 then 'inline' else 'none')
                 .attr('display', (d) -> if d.depth <= iz then 'inline' else 'none')
                 
             region_labels
-                .attr('display', (d) -> if d.depth > iz then 'none' else 'inline')
-                .attr('fill-opacity', (d) -> if d.depth == iz then 0.5 else 0.1)
+                .attr('display', (d) -> if d.depth <= iz then 'inline' else 'none')
+                .attr('fill-opacity', (d) -> if d.depth == iz then 0.5 else if d.height == 2 then 0.5 else 0.1)
                 # .attr('display', (d) -> if d.leaf_descendants.length*z*z*z > 5000 then 'inline' else 'none')
                 # .attr('fill-opacity', (d) -> if d.leaf_descendants.length*z*z*z > 7000 then 0.5*7000/(d.leaf_descendants.length*z*z*z) else 0.5)
                 
             if z >= LEAF_Z
+                region_labels.attr('fill-opacity', 0.1)
                 leaf_labels.attr('display', 'inline')
                 tooltip.attr('display', 'none')
             else
+                region_labels.attr('fill-opacity', (d) -> if d.depth == iz then 0.5 else if d.height == 2 then 0.5 else 0.1) # same as above
                 leaf_labels.attr('display', 'none')
                 tooltip.attr('display', 'inline')
                 

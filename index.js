@@ -59,7 +59,7 @@
   d3.json('wnen30_core_n_longest.json', function(graph) {
     /* objectify the graph
     */
-    var LEAF_Z, cells, cells2fontsize, defs, depth2boundary_width, depth_color, hierarchy, index, l, last_iz, leaf_labels, leaves, n, nodes, old_highlighted_depth, region_labels, regions, scale, tree, whiten, whiteness, _i, _j, _k, _len, _len2, _len3, _ref, _ref2;
+    var LABEL_SCALE, LEAF_Z, cells, cells2fontsize, cells_g, defs, depth2boundary_width, depth_color, hierarchy, index, l, last_iz, leaf_labels, leaves, n, nodes, old_highlighted_depth, region_labels, region_labels_g, regions, regions_g, scale, translation, tree, whiten, whiteness, _i, _j, _k, _len, _len2, _len3, _ref, _ref2;
     console.debug('Indexing nodes...');
     index = {};
     _ref = graph.nodes;
@@ -123,7 +123,7 @@
     */
     console.debug('Computing the Space-Filling Curve layout...');
     scale = 26;
-    sfc_layout.displace(leaves, sfc_layout.HILBERT, scale, scale * 1 / Math.sqrt(3), Math.PI / 4);
+    translation = sfc_layout.displace(leaves, sfc_layout.HILBERT, scale, scale * 1 / Math.sqrt(3), Math.PI / 4);
     /* compute also the position of internal nodes
     */
     console.debug('Computing the position of internal nodes...');
@@ -152,6 +152,8 @@
     /* compute all the internal nodes regions
     */
     jigsaw.treemap(tree, scale, jigsaw.ISO_CELL);
+    console.debug('Computing hilbert label placement...');
+    jigsaw.hilbert_labels(tree, scale, translation);
     console.debug('Drawing...');
     /* define the level zero region (the land)
     */
@@ -160,7 +162,8 @@
     */
     /* draw the cells
     */
-    cells = map.selectAll('.cell').data(leaves).enter().append('path').attr('class', 'cell').attr('d', jigsaw.iso_generate_svg_path(scale)).attr('transform', function(d) {
+    cells_g = map.append('g');
+    cells = cells_g.selectAll('.cell').data(leaves).enter().append('path').attr('class', 'cell').attr('d', jigsaw.iso_generate_svg_path(scale)).attr('transform', function(d) {
       return "translate(" + d.x + "," + d.y + ")";
     }).attr('fill', function(d) {
       return depth_color(d.depth);
@@ -176,7 +179,8 @@
       return (20 - 0.2) / Math.pow(2, x) + 0.2;
     };
     old_highlighted_depth = null;
-    regions = map.selectAll('.region').data(nodes.filter(function(d) {
+    regions_g = map.append('g');
+    regions = regions_g.selectAll('.region').data(nodes.filter(function(d) {
       return d.type === 'synset';
     }).sort(function(a, b) {
       return b.depth - a.depth;
@@ -189,6 +193,7 @@
         return depth2boundary_width(d.depth);
       }
     }).attr('stroke', 'white').on('click', function(d) {
+      if (d3.event.defaultPrevented) return;
       if (!(old_highlighted_depth != null) || old_highlighted_depth !== d.depth) {
         regions.filter(function(r) {
           return r.depth <= d.depth;
@@ -211,14 +216,30 @@
     /* draw region labels
     */
     cells2fontsize = d3.scale.pow().exponent(0.4).domain([1, leaves.length]).range([2, 150]);
-    region_labels = map.selectAll('.region_label').data(nodes.filter(function(d) {
+    LABEL_SCALE = 0.6;
+    region_labels_g = map.append('g').attr('transform', "translate(" + translation.dx + "," + translation.dy + "), scale(1, " + (1 / Math.sqrt(3)) + "), rotate(45)");
+    region_labels = region_labels_g.selectAll('.region_label').data(nodes.filter(function(d) {
       return d.type === 'synset';
-    })).enter().append('text').attr('class', 'region_label').attr('font-size', function(d) {
-      return cells2fontsize(d.leaf_descendants.length);
-    }).attr('dy', '0.35em').attr('transform', function(d) {
-      return "translate(" + d.x + "," + d.y + "), scale(1, " + (1 / Math.sqrt(3)) + "), rotate(45)";
-    }).text(function(d) {
+    })).enter().append('text').attr('class', 'region_label').attr('dy', '0.35em').text(function(d) {
       return d.senses[0].lemma;
+    }).attr('transform', function(d) {
+      var bbox, bbox_aspect, h_ratio, lbbox, lbbox_aspect, lbbox_height, lbbox_width, ratio, rotate, w_ratio;
+      bbox = this.getBBox();
+      bbox_aspect = bbox.width / bbox.height;
+      lbbox = d.label_bbox;
+      lbbox_aspect = lbbox.width / lbbox.height;
+      rotate = bbox_aspect >= 1 && lbbox_aspect < 1 || bbox_aspect < 1 && lbbox_aspect >= 1;
+      if (rotate) {
+        lbbox_width = lbbox.height;
+        lbbox_height = lbbox.width;
+      } else {
+        lbbox_width = lbbox.width;
+        lbbox_height = lbbox.height;
+      }
+      w_ratio = lbbox_width / bbox.width;
+      h_ratio = lbbox_height / bbox.height;
+      ratio = Math.min(w_ratio, h_ratio) * LABEL_SCALE;
+      return "translate(" + (d.label_bbox.x + d.label_bbox.width / 2) + "," + (d.label_bbox.y + d.label_bbox.height / 2) + "),scale(" + ratio + "),rotate(" + (rotate ? -90 : 0) + ")";
     });
     /* draw the leaf labels
     */

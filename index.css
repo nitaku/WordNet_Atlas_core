@@ -61,8 +61,9 @@ html, body {
 }
 
 .region_label {
-  fill: black;
+  fill: #1d183f;
   font-weight: bold;
+  font-size: 20px;
 }
 
 .graph_link {

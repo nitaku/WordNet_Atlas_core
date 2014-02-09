@@ -135,7 +135,7 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
     ### compute the space-filling curve layout ###
     console.debug 'Computing the Space-Filling Curve layout...'
     scale = 26
-    sfc_layout.displace(leaves, sfc_layout.HILBERT, scale, scale*1/Math.sqrt(3), Math.PI/4)
+    translation = sfc_layout.displace(leaves, sfc_layout.HILBERT, scale, scale*1/Math.sqrt(3), Math.PI/4)
     
     ### compute also the position of internal nodes ###
     console.debug 'Computing the position of internal nodes...'
@@ -183,6 +183,9 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
     ### compute all the internal nodes regions ###
     jigsaw.treemap(tree, scale, jigsaw.ISO_CELL)
     
+    console.debug 'Computing hilbert label placement...'
+    jigsaw.hilbert_labels(tree, scale, translation)
+    
     console.debug 'Drawing...'
     ### define the level zero region (the land) ###
     defs = svg.append('defs')
@@ -201,13 +204,15 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         # .attr('xlink:href', '#land')
         
     ### draw the cells ###
-    cells = map.selectAll('.cell')
+    cells_g = map.append('g')
+    cells = cells_g.selectAll('.cell')
         .data(leaves)
       .enter().append('path')
         .attr('class', 'cell')
         .attr('d', jigsaw.iso_generate_svg_path(scale))
         .attr('transform', (d) -> "translate(#{d.x},#{d.y})")
         .attr('fill', (d) -> depth_color(d.depth))
+        # .attr('fill', '#93cddc')
         .on('mouseenter', (d) ->
             tooltip_g
                 .attr('transform', "translate(#{d.x},#{d.y-scale*0.5})")
@@ -220,7 +225,8 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
     depth2boundary_width = (x) -> (20-0.2)/Math.pow(2,x)+0.2
     
     old_highlighted_depth = null
-    regions = map.selectAll('.region')
+    regions_g = map.append('g')
+    regions = regions_g.selectAll('.region')
         .data(nodes.filter((d)->d.type is 'synset').sort((a,b)->b.depth-a.depth)) # stack regions in depth order
       .enter().append('path')
         .attr('class', 'region')
@@ -228,6 +234,8 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         .attr('stroke-width', (d) -> if d.depth == 0 then depth2boundary_width(d.depth+1) else depth2boundary_width(d.depth)) # level zero boundary is equal to level one
         .attr('stroke', 'white')
         .on('click', (d) ->
+            return if (d3.event.defaultPrevented)
+            
             if not old_highlighted_depth? or old_highlighted_depth != d.depth
                 regions.filter((r)->r.depth <= d.depth).attr('stroke', '#444')
                 regions.filter((r)->r.depth > d.depth).attr('stroke', 'white')
@@ -267,14 +275,37 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         .domain([1, leaves.length])
         .range([2,150])
         
-    region_labels = map.selectAll('.region_label')
+    LABEL_SCALE = 0.6
+    region_labels_g = map.append('g')
+        .attr('transform', "translate(#{translation.dx},#{translation.dy}), scale(1, #{1/Math.sqrt(3)}), rotate(45)")
+        
+    region_labels = region_labels_g.selectAll('.region_label')
         .data(nodes.filter((d)->d.type is 'synset'))
       .enter().append('text')
         .attr('class', 'region_label')
-        .attr('font-size', (d) -> cells2fontsize(d.leaf_descendants.length))
+        # .attr('font-size', (d) -> cells2fontsize(d.leaf_descendants.length))
         .attr('dy', '0.35em')
-        .attr('transform', (d) -> "translate(#{d.x},#{d.y}), scale(1, #{1/Math.sqrt(3)}), rotate(45)")
+        # .attr('transform', (d) -> "translate(#{d.x},#{d.y}), scale(1, #{1/Math.sqrt(3)}), rotate(45)")
         .text((d) -> d.senses[0].lemma) # first sense is the most common
+        .attr('transform', (d) ->
+            bbox = this.getBBox()
+            bbox_aspect = bbox.width / bbox.height
+            lbbox = d.label_bbox
+            lbbox_aspect = lbbox.width / lbbox.height
+            rotate = bbox_aspect >= 1 and lbbox_aspect < 1 or bbox_aspect < 1 and lbbox_aspect >= 1
+            if rotate
+                lbbox_width = lbbox.height
+                lbbox_height = lbbox.width
+            else
+                lbbox_width = lbbox.width
+                lbbox_height = lbbox.height
+                
+            w_ratio = lbbox_width / bbox.width
+            h_ratio = lbbox_height / bbox.height
+            ratio = Math.min(w_ratio, h_ratio)*LABEL_SCALE
+            
+            return "translate(#{d.label_bbox.x+d.label_bbox.width/2},#{d.label_bbox.y+d.label_bbox.height/2}),scale(#{ratio}),rotate(#{if rotate then -90 else 0})"
+        )
         
     ### draw the leaf labels ###
     leaf_labels = map.selectAll('.leaf_label')

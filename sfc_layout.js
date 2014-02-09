@@ -6,7 +6,7 @@
 */
 
 (function() {
-  var base_log, execute, fractalize;
+  var base_log, execute, fractalize, int_execute;
 
   fractalize = function(config) {
     var char, i, input, output, _i, _len, _ref;
@@ -54,6 +54,39 @@
     return points;
   };
 
+  /* execute a curve string and return all the generated points
+  */
+
+  /* returns integer coordinates (works only for 0-oriented, clockwise square tilings)
+  */
+
+  int_execute = function(curve_string) {
+    var char, dir_i, dirs, last_point, points, _i, _len;
+    points = [
+      {
+        ix: 0,
+        iy: 0
+      }
+    ];
+    dirs = [[+1, 0], [0, +1], [-1, 0], [0, -1]];
+    dir_i = 0;
+    for (_i = 0, _len = curve_string.length; _i < _len; _i++) {
+      char = curve_string[_i];
+      if (char === '+') {
+        dir_i = (dir_i + 1) % dirs.length;
+      } else if (char === '-') {
+        dir_i = dir_i === 0 ? dirs.length - 1 : dir_i - 1;
+      } else if (char === 'F') {
+        last_point = points[points.length - 1];
+        points.push({
+          ix: last_point.ix + dirs[dir_i][0],
+          iy: last_point.iy + dirs[dir_i][1]
+        });
+      }
+    }
+    return points;
+  };
+
   /* custom base for logarithm (see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/log)
   */
 
@@ -63,6 +96,7 @@
 
   window.sfc_layout = {
     GOSPER: {
+      tiling: 'hex',
       base: 7,
       angle: Math.PI / 3,
       axiom: 'A',
@@ -72,6 +106,7 @@
       }
     },
     HILBERT: {
+      tiling: 'square',
       base: 4,
       angle: Math.PI / 2,
       axiom: 'A',
@@ -81,7 +116,7 @@
       }
     },
     displace: function(seq, curve_cfg, scale_x, scale_y, orientation) {
-      var curve, curve_string, d, max_x, max_y, min_x, min_y, point, steps, _i, _j, _len, _len2, _ref, _ref2, _results;
+      var curve, curve_string, d, int_curve, max_x, max_y, min_x, min_y, point, steps, translation, _i, _j, _k, _len, _len2, _len3, _ref, _ref2, _ref3, _ref4;
       scale_x = scale_x != null ? scale_x : 10;
       scale_y = scale_y != null ? scale_y : 10;
       orientation = orientation != null ? orientation : 0;
@@ -120,13 +155,27 @@
       min_y = d3.min(seq, function(d) {
         return d.y;
       });
-      _results = [];
+      translation = {
+        dx: -(max_x + min_x) / 2,
+        dy: -(max_y + min_y) / 2
+      };
       for (_j = 0, _len2 = seq.length; _j < _len2; _j++) {
         d = seq[_j];
-        d.x -= (max_x + min_x) / 2;
-        _results.push(d.y -= (max_y + min_y) / 2);
+        d.x += translation.dx;
+        d.y += translation.dy;
       }
-      return _results;
+      /* if the curve uses a square tiling, also compute integer coordinates
+      */
+      if (curve_cfg.tiling === 'square') {
+        int_curve = int_execute(curve_string);
+        _ref3 = zip(seq, int_curve);
+        for (_k = 0, _len3 = _ref3.length; _k < _len3; _k++) {
+          _ref4 = _ref3[_k], d = _ref4[0], point = _ref4[1];
+          d.ix = point.ix;
+          d.iy = point.iy;
+        }
+      }
+      return translation;
     },
     /* recursively assign positions to internal nodes too. also compute leaf descendants
     */

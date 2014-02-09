@@ -35,11 +35,38 @@ execute = (curve_string, angle, scale_x, scale_y, orientation) ->
             
     return points
     
+### execute a curve string and return all the generated points ###
+### returns integer coordinates (works only for 0-oriented, clockwise square tilings) ###
+int_execute = (curve_string) ->
+    points = [{ix: 0, iy: 0}]
+    dirs = [
+        [+1,0],
+        [0,+1],
+        [-1,0],
+        [0,-1]
+    ]
+    dir_i = 0
+    
+    for char in curve_string
+        if char == '+'
+            dir_i = (dir_i+1) % dirs.length 
+        else if char == '-'
+            dir_i = if dir_i is 0 then dirs.length-1 else dir_i-1 
+        else if char == 'F'
+            last_point = points[points.length-1]
+            points.push {
+                ix: last_point.ix + dirs[dir_i][0],
+                iy: last_point.iy + dirs[dir_i][1]
+            }
+            
+    return points
+    
 ### custom base for logarithm (see https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/log) ###
 base_log = (x, base) -> Math.log(x) / Math.log(base)
 
 window.sfc_layout = {
     GOSPER: {
+        tiling: 'hex'
         base: 7
         angle: Math.PI/3
         axiom: 'A'
@@ -48,6 +75,7 @@ window.sfc_layout = {
             B: '-FA+BFBF++BF+FA--FA-B'
     }
     HILBERT: {
+        tiling: 'square'
         base: 4
         angle: Math.PI/2
         axiom: 'A'
@@ -83,10 +111,21 @@ window.sfc_layout = {
         min_x = d3.min(seq, (d)->d.x)
         min_y = d3.min(seq, (d)->d.y)
         
+        translation = {dx: -(max_x+min_x)/2, dy: -(max_y+min_y)/2}
+        
         for d in seq
-            d.x -= (max_x+min_x)/2
-            d.y -= (max_y+min_y)/2
+            d.x += translation.dx
+            d.y += translation.dy
             
+        ### if the curve uses a square tiling, also compute integer coordinates ###
+        if curve_cfg.tiling is 'square'
+            int_curve = int_execute(curve_string)
+            for [d,point] in zip(seq, int_curve)
+                d.ix = point.ix
+                d.iy = point.iy
+                
+        return translation
+        
     ### recursively assign positions to internal nodes too. also compute leaf descendants ###
     displace_tree: (node) ->
         if not node.children?

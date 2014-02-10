@@ -99,6 +99,34 @@
       }
       return node.height;
     },
+    /* compute leaf descendants
+    */
+    compute_leaf_descendants: function(node) {
+      var c, child, _i, _len, _ref;
+      if (!(node.children != null)) {
+        /* this is a leaf
+        */
+        node.leaf_descendants = [node];
+        return;
+      }
+      _ref = node.children;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        child = _ref[_i];
+        tree_utils.compute_leaf_descendants(child);
+      }
+      return node.leaf_descendants = ((function() {
+        var _j, _len2, _ref2, _results;
+        _ref2 = node.children;
+        _results = [];
+        for (_j = 0, _len2 = _ref2.length; _j < _len2; _j++) {
+          c = _ref2[_j];
+          _results.push(c.leaf_descendants);
+        }
+        return _results;
+      })()).reduce(function(a, d) {
+        return a.concat(d);
+      });
+    },
     /* generate a random tree
     */
     random_tree: function(d, MAX_D, MAX_N) {

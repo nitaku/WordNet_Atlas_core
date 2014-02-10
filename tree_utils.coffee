@@ -51,6 +51,18 @@ window.tree_utils = {
             
         return node.height
         
+    ### compute leaf descendants ###
+    compute_leaf_descendants: (node) ->
+        if not node.children?
+            ### this is a leaf ###
+            node.leaf_descendants = [node]
+            return
+            
+        for child in node.children
+            tree_utils.compute_leaf_descendants(child)
+            
+        node.leaf_descendants = (c.leaf_descendants for c in node.children).reduce((a, d) -> a.concat(d))
+        
     ### generate a random tree ###
     random_tree: (d, MAX_D, MAX_N) ->
         ### return a tree with maximum depth MAX_D that branches with probability p at most N times for each internal node. p starts from 1 and decreases linearly with d, reaching zero at MAX_D ###

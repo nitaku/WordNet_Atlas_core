@@ -70,6 +70,7 @@ html, body {
   fill: none;
   pointer-events: none;
   stroke-linecap: round;
+  stroke: #a8768e;
   vector-effect: non-scaling-stroke;
 }
 

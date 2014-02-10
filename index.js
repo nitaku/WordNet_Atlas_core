@@ -33,7 +33,7 @@
   /* define a zoom behavior
   */
 
-  zoom = d3.behavior.zoom().scaleExtent([1, 100]).on('zoom', function() {
+  zoom = d3.behavior.zoom().scaleExtent([0.5, 100]).on('zoom', function() {
     /* whenever the user zooms,
     */
     /* modify translation and scale of the zoom group accordingly
@@ -59,7 +59,7 @@
   d3.json('wnen30_core_n_longest.json', function(graph) {
     /* objectify the graph
     */
-    var LABEL_SCALE, LEAF_Z, cells, cells2fontsize, cells_g, defs, depth2boundary_width, depth_color, hierarchy, index, l, last_iz, leaf_labels, leaves, n, nodes, old_highlighted_depth, region_labels, region_labels_g, regions, regions_g, scale, translation, tree, whiten, whiteness, _i, _j, _k, _len, _len2, _len3, _ref, _ref2;
+    var LABEL_SCALE, LEAF_Z, TENSION, capital_placement, cells, cells_g, defs, depth2width, depth_color, graph_links, graph_links_g, hierarchy, index, l, last_iz, leaf_labels, leaves, n, nodes, old_highlighted_depth, region_labels, region_labels_g, regions, regions_g, scale, translation, tree, whiten, whiteness, _i, _j, _k, _len, _len2, _len3, _ref, _ref2;
     console.debug('Indexing nodes...');
     index = {};
     _ref = graph.nodes;
@@ -110,13 +110,58 @@
     */
     console.debug('Computing canonical sort...');
     tree_utils.canonical_sort(tree);
-    /* obtain the sequence of leaves
-    */
-    leaves = tree_utils.get_leaves(tree);
+    console.debug('Computing leaf descendants...');
+    tree_utils.compute_leaf_descendants(tree);
     /* compute the subtree height for each node
     */
     console.debug('Computing subtrees height...');
     tree_utils.compute_height(tree);
+    console.debug('Placing capitals in the middle of their region...');
+    capital_placement = function(node) {
+      /* skip leaf synsets
+      */
+      var child, cut, cut_dist, dist, i, left, left_size, m, right, right_size, _l, _len4, _ref3, _ref4, _results;
+      if (node.height <= 2) return;
+      /* place the sense nodes about into the middle of the children array
+      */
+      node.children = node.children.filter(function(d) {
+        return d.type === 'synset';
+      });
+      m = d3.sum(node.children, function(d) {
+        return d.leaf_descendants.length;
+      }) / 2;
+      cut = null;
+      cut_dist = m;
+      for (i = 0, _ref3 = node.children.length; 0 <= _ref3 ? i < _ref3 : i > _ref3; 0 <= _ref3 ? i++ : i--) {
+        left = node.children.slice(0, i);
+        right = node.children.slice(i);
+        left_size = d3.sum(left, function(d) {
+          return d.leaf_descendants.length;
+        });
+        right_size = d3.sum(left, function(d) {
+          return d.leaf_descendants.length;
+        });
+        dist = Math.min(Math.abs(m - left_size), Math.abs(m - right_size));
+        if (dist < cut_dist) {
+          cut_dist = dist;
+          cut = i;
+        }
+      }
+      node.children = node.children.slice(0, cut).concat(node.senses.concat(node.children.slice(cut)));
+      /* recur
+      */
+      _ref4 = node.children;
+      _results = [];
+      for (_l = 0, _len4 = _ref4.length; _l < _len4; _l++) {
+        child = _ref4[_l];
+        _results.push(capital_placement(child));
+      }
+      return _results;
+    };
+    capital_placement(tree);
+    /* obtain the sequence of leaves
+    */
+    leaves = tree_utils.get_leaves(tree);
     /* VISUALIZATION
     */
     /* compute the space-filling curve layout
@@ -175,7 +220,7 @@
     });
     /* draw boundaries
     */
-    depth2boundary_width = function(x) {
+    depth2width = function(x) {
       return (20 - 0.2) / Math.pow(2, x) + 0.2;
     };
     old_highlighted_depth = null;
@@ -188,9 +233,9 @@
       return jigsaw.get_svg_path(d.region);
     }).attr('stroke-width', function(d) {
       if (d.depth === 0) {
-        return depth2boundary_width(d.depth + 1);
+        return depth2width(d.depth + 1);
       } else {
-        return depth2boundary_width(d.depth);
+        return depth2width(d.depth);
       }
     }).attr('stroke', 'white').on('click', function(d) {
       if (d3.event.defaultPrevented) return;
@@ -211,11 +256,24 @@
     */
     /* draw the graph links
     */
-    /* draw the graph links
-    */
+    TENSION = 1;
+    graph_links_g = map.append('g');
+    graph_links = graph_links_g.selectAll('.graph_link').data(graph.links.filter(function(d) {
+      return d.source.type === 'synset' && d.target.type === 'synset';
+    })).enter().append('path').attr('class', 'graph_link').attr('d', function(d) {
+      var x1, x2, y1, y2;
+      x1 = d.source.senses[0].x;
+      y1 = d.source.senses[0].y;
+      x2 = d.target.senses[0].x;
+      y2 = d.target.senses[0].y;
+      /* parent coordinates
+      */
+      return "M" + x1 + " " + y1 + " C" + x1 + " " + (y1 - 40 * depth2width(d.source.depth)) + " " + x2 + " " + (y2 - 40 * depth2width(d.source.depth)) + " " + x2 + " " + y2;
+    }).attr('stroke-width', function(d) {
+      return depth2width(d.source.depth) * global_scale + 0.1;
+    });
     /* draw region labels
     */
-    cells2fontsize = d3.scale.pow().exponent(0.4).domain([1, leaves.length]).range([2, 150]);
     LABEL_SCALE = 0.6;
     region_labels_g = map.append('g').attr('transform', "translate(" + translation.dx + "," + translation.dy + "), scale(1, " + (1 / Math.sqrt(3)) + "), rotate(45)");
     region_labels = region_labels_g.selectAll('.region_label').data(nodes.filter(function(d) {

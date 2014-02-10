@@ -126,19 +126,16 @@ window.sfc_layout = {
                 
         return translation
         
-    ### recursively assign positions to internal nodes too. also compute leaf descendants ###
+    ### recursively assign positions to internal nodes too ###
     displace_tree: (node) ->
         if not node.children?
             ### this is a leaf ###
-            node.leaf_descendants = [node]
-            return node.leaf_descendants
+            return
             
         ### an internal node's position is the centroid of its leaf descendants ###
-        node.leaf_descendants = (sfc_layout.displace_tree(c) for c in node.children).reduce((a, d) -> a.concat(d))
-        
         node.x = d3.mean(node.leaf_descendants, (d)->d.x)
         node.y = d3.mean(node.leaf_descendants, (d)->d.y)
         
-        ### pass descendants up to the hierarchy ###
-        return node.leaf_descendants
+        for child in node.children
+            sfc_layout.displace_tree(child)
 }

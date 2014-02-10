@@ -55,7 +55,7 @@ map = vis.append('g')
 
 ### define a zoom behavior ###
 zoom = d3.behavior.zoom()
-    .scaleExtent([1,100]) # min-max zoom
+    .scaleExtent([0.5,100]) # min-max zoom
     .on 'zoom', () ->
         ### whenever the user zooms, ###
         ### modify translation and scale of the zoom group accordingly ###
@@ -121,13 +121,49 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
     console.debug 'Computing canonical sort...'
     tree_utils.canonical_sort(tree)
     
+    console.debug 'Computing leaf descendants...'
+    tree_utils.compute_leaf_descendants(tree)
     
-    ### obtain the sequence of leaves ###
-    leaves = tree_utils.get_leaves(tree)
 
     ### compute the subtree height for each node ###
     console.debug 'Computing subtrees height...'
     tree_utils.compute_height(tree)
+    
+    
+    console.debug 'Placing capitals in the middle of their region...'
+    capital_placement = (node) ->
+        ### skip leaf synsets ###
+        if node.height <= 2
+            return
+            
+        ### place the sense nodes about into the middle of the children array ###
+        node.children = node.children.filter((d) -> d.type is 'synset')
+        m = d3.sum(node.children, (d)->d.leaf_descendants.length) / 2
+        
+        cut = null
+        cut_dist = m
+        for i in [0...node.children.length]
+            left = node.children.slice(0,i)
+            right = node.children.slice(i)
+            left_size = d3.sum(left, (d)->d.leaf_descendants.length)
+            right_size = d3.sum(left, (d)->d.leaf_descendants.length)
+            
+            dist = Math.min(Math.abs(m-left_size), Math.abs(m-right_size))
+            
+            if dist < cut_dist
+                cut_dist = dist
+                cut = i
+                
+        node.children = node.children.slice(0,cut).concat(node.senses.concat(node.children.slice(cut)))
+        
+        ### recur ###
+        for child in node.children
+            capital_placement(child)
+            
+    capital_placement(tree)
+    
+    ### obtain the sequence of leaves ###
+    leaves = tree_utils.get_leaves(tree)
     
     
     ### VISUALIZATION ###
@@ -140,7 +176,7 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
     ### compute also the position of internal nodes ###
     console.debug 'Computing the position of internal nodes...'
     sfc_layout.displace_tree(tree)
-
+    
     ### define a bundle layout ###
     # console.debug 'Computing the d3 bundle layout...'
     # bundle = d3.layout.bundle()
@@ -186,6 +222,7 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
     console.debug 'Computing hilbert label placement...'
     jigsaw.hilbert_labels(tree, scale, translation)
     
+    
     console.debug 'Drawing...'
     ### define the level zero region (the land) ###
     defs = svg.append('defs')
@@ -222,7 +259,7 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         .on('mouseleave', () -> tooltip.text(''))
         
     ### draw boundaries ###
-    depth2boundary_width = (x) -> (20-0.2)/Math.pow(2,x)+0.2
+    depth2width = (x) -> (20-0.2)/Math.pow(2,x)+0.2
     
     old_highlighted_depth = null
     regions_g = map.append('g')
@@ -231,7 +268,7 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
       .enter().append('path')
         .attr('class', 'region')
         .attr('d', (d) -> jigsaw.get_svg_path d.region)
-        .attr('stroke-width', (d) -> if d.depth == 0 then depth2boundary_width(d.depth+1) else depth2boundary_width(d.depth)) # level zero boundary is equal to level one
+        .attr('stroke-width', (d) -> if d.depth == 0 then depth2width(d.depth+1) else depth2width(d.depth)) # level zero boundary is equal to level one
         .attr('stroke', 'white')
         .on('click', (d) ->
             return if (d3.event.defaultPrevented)
@@ -257,23 +294,40 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         # .attr('class', 'graph_link')
         # .attr('d', link_generator)
         
-    ### draw the graph links ###
-    # map.selectAll('.graph_link')
-        # .data(graph.links.filter((d)->d.is_tree_link and d.source.depth < 2))
-      # .enter().append('line')
-        # .attr('class', 'graph_link')
-        # .attr('x1', (d)->d.source.x)
-        # .attr('y1', (d)->d.source.y)
-        # .attr('x2', (d)->d.target.x)
-        # .attr('y2', (d)->d.target.y)
-        # .attr('stroke', (d)->if d.is_tree_link then 'teal' else 'orange')
-        # .attr('stroke-width', (d)->(tree.height-d.source.depth+1)*0.05)
+    # ### draw the graph links ###
+    TENSION = 1
+    graph_links_g = map.append('g')
+    graph_links = graph_links_g.selectAll('.graph_link')
+        .data(graph.links.filter((d)->d.source.type is 'synset' and d.target.type is 'synset'))
+      .enter().append('path')
+        .attr('class', 'graph_link')
+        .attr('d', (d) ->
+            x1 = d.source.senses[0].x
+            y1 = d.source.senses[0].y
+            x2 = d.target.senses[0].x
+            y2 = d.target.senses[0].y
+            
+            ### parent coordinates ###
+            # if d.source.parent?
+                # px = d.source.parent.senses[0].x
+                # py = d.source.parent.senses[0].y
+                # l = Math.sqrt(Math.pow(x1-px,2)+Math.pow(y1-py,2))
+                # d = Math.sqrt(Math.pow(x2-x1,2)+Math.pow(y2-y1,2))
+                # dcx = (x1-px)/l*d/TENSION
+                # dcy = (y1-py)/l*d/TENSION
+            # else
+                # dcx = 0
+                # dcy = 0
+                
+            return "M#{x1} #{y1} C#{x1} #{y1-40*depth2width(d.source.depth)} #{x2} #{y2-40*depth2width(d.source.depth)} #{x2} #{y2}"
+        )
+        .attr('stroke-width', (d) -> depth2width(d.source.depth)*global_scale+0.1)
         
     ### draw region labels ###
-    cells2fontsize = d3.scale.pow()
-        .exponent(0.4)
-        .domain([1, leaves.length])
-        .range([2,150])
+    # cells2fontsize = d3.scale.pow()
+        # .exponent(0.4)
+        # .domain([1, leaves.length])
+        # .range([2,150])
         
     LABEL_SCALE = 0.6
     region_labels_g = map.append('g')
@@ -283,9 +337,7 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         .data(nodes.filter((d)->d.type is 'synset'))
       .enter().append('text')
         .attr('class', 'region_label')
-        # .attr('font-size', (d) -> cells2fontsize(d.leaf_descendants.length))
         .attr('dy', '0.35em')
-        # .attr('transform', (d) -> "translate(#{d.x},#{d.y}), scale(1, #{1/Math.sqrt(3)}), rotate(45)")
         .text((d) -> d.senses[0].lemma) # first sense is the most common
         .attr('transform', (d) ->
             bbox = this.getBBox()

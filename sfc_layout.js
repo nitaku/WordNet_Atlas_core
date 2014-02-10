@@ -177,39 +177,30 @@
       }
       return translation;
     },
-    /* recursively assign positions to internal nodes too. also compute leaf descendants
+    /* recursively assign positions to internal nodes too
     */
     displace_tree: function(node) {
-      var c;
+      var child, _i, _len, _ref, _results;
       if (!(node.children != null)) {
         /* this is a leaf
         */
-        node.leaf_descendants = [node];
-        return node.leaf_descendants;
+        return;
       }
       /* an internal node's position is the centroid of its leaf descendants
       */
-      node.leaf_descendants = ((function() {
-        var _i, _len, _ref, _results;
-        _ref = node.children;
-        _results = [];
-        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-          c = _ref[_i];
-          _results.push(sfc_layout.displace_tree(c));
-        }
-        return _results;
-      })()).reduce(function(a, d) {
-        return a.concat(d);
-      });
       node.x = d3.mean(node.leaf_descendants, function(d) {
         return d.x;
       });
       node.y = d3.mean(node.leaf_descendants, function(d) {
         return d.y;
       });
-      /* pass descendants up to the hierarchy
-      */
-      return node.leaf_descendants;
+      _ref = node.children;
+      _results = [];
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        child = _ref[_i];
+        _results.push(sfc_layout.displace_tree(child));
+      }
+      return _results;
     }
   };
 

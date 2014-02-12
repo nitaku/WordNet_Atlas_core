@@ -115,6 +115,16 @@
         B: '+AF-BFB-FA+'
       }
     },
+    PEANO: {
+      tiling: 'square',
+      base: 9,
+      angle: Math.PI / 2,
+      axiom: 'L',
+      rules: {
+        L: 'LFRFL-F-RFLFR+F+LFRFL',
+        R: 'RFLFR+F+LFRFL-F-RFLFR'
+      }
+    },
     displace: function(seq, curve_cfg, scale_x, scale_y, orientation) {
       var curve, curve_string, d, int_curve, max_x, max_y, min_x, min_y, point, steps, translation, _i, _j, _k, _len, _len2, _len3, _ref, _ref2, _ref3, _ref4;
       scale_x = scale_x != null ? scale_x : 10;

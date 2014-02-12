@@ -95,14 +95,14 @@
     console.debug('Computing d3 hierarchy layout...');
     hierarchy = d3.layout.hierarchy();
     nodes = hierarchy(tree);
-    /* sort the senses by sensenum
+    /* sort the senses FIXME this is not a good ordering - we should get the tagcount column
     */
     console.debug('Sorting senses...');
     for (_k = 0, _len3 = nodes.length; _k < _len3; _k++) {
       n = nodes[_k];
       if (n.type === 'synset') {
         n.senses.sort(function(a, b) {
-          return b.sensenum - a.sensenum;
+          return a.id - b.id;
         });
       }
     }
@@ -168,7 +168,7 @@
     */
     console.debug('Computing the Space-Filling Curve layout...');
     scale = 26;
-    translation = sfc_layout.displace(leaves, sfc_layout.HILBERT, scale, scale * 1 / Math.sqrt(3), Math.PI / 4);
+    translation = sfc_layout.displace(leaves, sfc_layout.PEANO, scale, scale * 1 / Math.sqrt(3), -Math.PI / 4);
     /* compute also the position of internal nodes
     */
     console.debug('Computing the position of internal nodes...');
@@ -197,7 +197,7 @@
     /* compute all the internal nodes regions
     */
     jigsaw.treemap(tree, scale, jigsaw.ISO_CELL);
-    console.debug('Computing hilbert label placement...');
+    console.debug('Computing label placement...');
     jigsaw.hilbert_labels(tree, scale, translation);
     console.debug('Drawing...');
     /* define the level zero region (the land)
@@ -275,7 +275,7 @@
     /* draw region labels
     */
     LABEL_SCALE = 0.6;
-    region_labels_g = map.append('g').attr('transform', "translate(" + translation.dx + "," + translation.dy + "), scale(1, " + (1 / Math.sqrt(3)) + "), rotate(45)");
+    region_labels_g = map.append('g').attr('transform', "translate(" + translation.dx + "," + translation.dy + "), scale(1, " + (1 / Math.sqrt(3)) + "), rotate(-45)");
     region_labels = region_labels_g.selectAll('.region_label').data(nodes.filter(function(d) {
       return d.type === 'synset';
     })).enter().append('text').attr('class', 'region_label').attr('dy', '0.35em').text(function(d) {
@@ -297,7 +297,7 @@
       w_ratio = lbbox_width / bbox.width;
       h_ratio = lbbox_height / bbox.height;
       ratio = Math.min(w_ratio, h_ratio) * LABEL_SCALE;
-      return "translate(" + (d.label_bbox.x + d.label_bbox.width / 2) + "," + (d.label_bbox.y + d.label_bbox.height / 2) + "),scale(" + ratio + "),rotate(" + (rotate ? -90 : 0) + ")";
+      return "translate(" + (d.label_bbox.x + d.label_bbox.width / 2) + "," + (d.label_bbox.y + d.label_bbox.height / 2) + "),scale(" + ratio + "),rotate(" + (rotate ? 90 : 0) + ")";
     });
     /* draw the leaf labels
     */

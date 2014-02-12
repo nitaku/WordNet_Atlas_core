@@ -111,11 +111,11 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
     hierarchy = d3.layout.hierarchy()
     nodes = hierarchy(tree)
     
-    ### sort the senses by sensenum ###
+    ### sort the senses FIXME this is not a good ordering - we should get the tagcount column ###
     console.debug 'Sorting senses...'
     for n in nodes
         if n.type == 'synset'
-            n.senses.sort((a,b)->b.sensenum-a.sensenum)
+            n.senses.sort((a,b)->a.id-b.id)
     
     ### this tree is unordered, we need a canonical ordering for it ###
     console.debug 'Computing canonical sort...'
@@ -171,7 +171,7 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
     ### compute the space-filling curve layout ###
     console.debug 'Computing the Space-Filling Curve layout...'
     scale = 26
-    translation = sfc_layout.displace(leaves, sfc_layout.HILBERT, scale, scale*1/Math.sqrt(3), Math.PI/4)
+    translation = sfc_layout.displace(leaves, sfc_layout.PEANO, scale, scale*1/Math.sqrt(3), -Math.PI/4)
     
     ### compute also the position of internal nodes ###
     console.debug 'Computing the position of internal nodes...'
@@ -219,7 +219,7 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
     ### compute all the internal nodes regions ###
     jigsaw.treemap(tree, scale, jigsaw.ISO_CELL)
     
-    console.debug 'Computing hilbert label placement...'
+    console.debug 'Computing label placement...'
     jigsaw.hilbert_labels(tree, scale, translation)
     
     
@@ -331,7 +331,7 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         
     LABEL_SCALE = 0.6
     region_labels_g = map.append('g')
-        .attr('transform', "translate(#{translation.dx},#{translation.dy}), scale(1, #{1/Math.sqrt(3)}), rotate(45)")
+        .attr('transform', "translate(#{translation.dx},#{translation.dy}), scale(1, #{1/Math.sqrt(3)}), rotate(-45)")
         
     region_labels = region_labels_g.selectAll('.region_label')
         .data(nodes.filter((d)->d.type is 'synset'))
@@ -356,7 +356,7 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
             h_ratio = lbbox_height / bbox.height
             ratio = Math.min(w_ratio, h_ratio)*LABEL_SCALE
             
-            return "translate(#{d.label_bbox.x+d.label_bbox.width/2},#{d.label_bbox.y+d.label_bbox.height/2}),scale(#{ratio}),rotate(#{if rotate then -90 else 0})"
+            return "translate(#{d.label_bbox.x+d.label_bbox.width/2},#{d.label_bbox.y+d.label_bbox.height/2}),scale(#{ratio}),rotate(#{if rotate then 90 else 0})"
         )
         
     ### draw the leaf labels ###

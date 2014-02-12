@@ -83,6 +83,15 @@ window.sfc_layout = {
             A: '-BF+AFA+FB-'
             B: '+AF-BFB-FA+'
     }
+    PEANO: {
+        tiling: 'square'
+        base: 9
+        angle: Math.PI/2
+        axiom: 'L'
+        rules:
+            L: 'LFRFL-F-RFLFR+F+LFRFL'
+            R: 'RFLFR+F+LFRFL-F-RFLFR'
+    }
     displace: (seq, curve_cfg, scale_x, scale_y, orientation) ->
         scale_x = if scale_x? then scale_x else 10
         scale_y = if scale_y? then scale_y else 10

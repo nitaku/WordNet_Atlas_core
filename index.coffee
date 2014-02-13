@@ -195,6 +195,14 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         # side: orthoproj.depth_projs(leaves, 'y')
     # }
     
+    console.debug 'Grouping nodes by depth...'
+    levels = []
+    for depth in [0..tree.height]
+        levels.push []
+        
+    for node in nodes
+        levels[node.depth].push node
+        
     console.debug 'Almost ready to draw...'
     
     ### define a color scale for leaf depth ###
@@ -225,7 +233,7 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
     
     console.debug 'Drawing...'
     ### define the level zero region (the land) ###
-    defs = svg.append('defs')
+    # defs = svg.append('defs')
 
     # defs.append('path')
         # .attr('id', 'land')
@@ -240,6 +248,11 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         # .attr('class', 'land-glow-inner')
         # .attr('xlink:href', '#land')
         
+    ### draw the land border (below cells and boundaries) ###
+    # map.append('use')
+        # .attr('class', 'land-fill')
+        # .attr('xlink:href', '#land')
+        
     ### draw the cells ###
     cells_g = map.append('g')
     cells = cells_g.selectAll('.cell')
@@ -249,8 +262,10 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         .attr('d', jigsaw.iso_generate_svg_path(scale))
         .attr('transform', (d) -> "translate(#{d.x},#{d.y})")
         .attr('fill', (d) -> depth_color(d.depth))
-        # .attr('fill', '#93cddc')
+        #.attr('fill', '#93cddc')
         .on('mouseenter', (d) ->
+            return if (d3.event.defaultPrevented)
+            
             tooltip_g
                 .attr('transform', "translate(#{d.x},#{d.y-scale*0.5})")
             tooltip
@@ -263,8 +278,13 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
     
     old_highlighted_depth = null
     regions_g = map.append('g')
-    regions = regions_g.selectAll('.region')
-        .data(nodes.filter((d)->d.type is 'synset').sort((a,b)->b.depth-a.depth)) # stack regions in depth order
+    regions_levels = regions_g.selectAll('.level')
+        .data(levels)
+      .enter().append('g')
+        .attr('class', 'level')
+        
+    regions_levels.selectAll('.region')
+        .data((level) -> level.filter((d)->d.type is 'synset')) # regions are in depth order
       .enter().append('path')
         .attr('class', 'region')
         .attr('d', (d) -> jigsaw.get_svg_path d.region)
@@ -282,10 +302,6 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
                 old_highlighted_depth = null
         )
         
-    ### draw the land border (above cells and boundaries) ###
-    # map.append('use')
-        # .attr('class', 'land-fill')
-        # .attr('xlink:href', '#land')
         
     ### draw the graph links ###
     # map.selectAll('.graph_link')
@@ -295,19 +311,19 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         # .attr('d', link_generator)
         
     # ### draw the graph links ###
-    TENSION = 1
-    graph_links_g = map.append('g')
-    graph_links = graph_links_g.selectAll('.graph_link')
-        .data(graph.links.filter((d)->d.source.type is 'synset' and d.target.type is 'synset'))
-      .enter().append('path')
-        .attr('class', 'graph_link')
-        .attr('d', (d) ->
-            x1 = d.source.senses[0].x
-            y1 = d.source.senses[0].y
-            x2 = d.target.senses[0].x
-            y2 = d.target.senses[0].y
+    # TENSION = 1
+    # graph_links_g = map.append('g')
+    # graph_links = graph_links_g.selectAll('.graph_link')
+        # .data(graph.links.filter((d)->d.source.type is 'synset' and d.target.type is 'synset'))
+      # .enter().append('path')
+        # .attr('class', 'graph_link')
+        # .attr('d', (d) ->
+            # x1 = d.source.senses[0].x
+            # y1 = d.source.senses[0].y
+            # x2 = d.target.senses[0].x
+            # y2 = d.target.senses[0].y
             
-            ### parent coordinates ###
+            # ### parent coordinates ###
             # if d.source.parent?
                 # px = d.source.parent.senses[0].x
                 # py = d.source.parent.senses[0].y
@@ -319,9 +335,9 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
                 # dcx = 0
                 # dcy = 0
                 
-            return "M#{x1} #{y1} C#{x1} #{y1-40*depth2width(d.source.depth)} #{x2} #{y2-40*depth2width(d.source.depth)} #{x2} #{y2}"
-        )
-        .attr('stroke-width', (d) -> depth2width(d.source.depth)*global_scale+0.1)
+            # return "M#{x1} #{y1} C#{x1} #{y1-40*depth2width(d.source.depth)} #{x2} #{y2-40*depth2width(d.source.depth)} #{x2} #{y2}"
+        # )
+        # .attr('stroke-width', (d) -> depth2width(d.source.depth)*global_scale+0.1)
         
     ### draw region labels ###
     # cells2fontsize = d3.scale.pow()
@@ -333,10 +349,16 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
     region_labels_g = map.append('g')
         .attr('transform', "translate(#{translation.dx},#{translation.dy}), scale(1, #{1/Math.sqrt(3)}), rotate(-45)")
         
-    region_labels = region_labels_g.selectAll('.region_label')
-        .data(nodes.filter((d)->d.type is 'synset'))
+    region_labels_levels = region_labels_g.selectAll('.level')
+        .data(levels)
+      .enter().append('g')
+        .attr('class', 'level')
+        
+    region_labels_levels.selectAll('.region_label')
+        .data((level) -> level.filter((d)->d.type is 'synset'))
       .enter().append('text')
         .attr('class', 'region_label')
+        .classed('leaf_synset', (d)->d.height is 2)
         .attr('dy', '0.35em')
         .text((d) -> d.senses[0].lemma) # first sense is the most common
         .attr('transform', (d) ->
@@ -360,18 +382,8 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         )
         
     ### draw the leaf labels ###
-    leaf_labels = map.selectAll('.leaf_label')
-        .data(leaves)
-      .enter().append('text')
-        .attr('class', 'leaf_label')
-        .attr('font-size', (d) -> if d.is_core then 3.5 else 2.5)
-        .attr('dy', '0.35em')
-        .attr('transform', (d) -> "translate(#{d.x},#{d.y})")
-        .text((d) -> "#{d.lemma}")
-        .attr('font-weight', (d) -> if d.is_core then 'bold' else 'normal')
-        .attr('display', 'none')
-        
-        
+    leaf_labels_g = map.append('g')
+    
     ### ORTHOGONAL PROJECTIONS ###
 
     ### FIXME define a width scale for leaf depth ###
@@ -437,25 +449,50 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         iz = Math.floor(Z_LEVELS*(z)/(LEAF_Z-1))
         # console.log "z: #{z}   iz: #{iz}"
         if iz != last_iz
-            regions
+            # regions
                 # .attr('display', (d) -> if d.leaf_descendants.length*z*z*z > 5000 then 'inline' else 'none')
-                .attr('display', (d) -> if d.depth <= iz then 'inline' else 'none')
+                # .attr('display', (d) -> if d.depth <= iz then 'inline' else 'none')
                 
-            region_labels
-                .attr('display', (d) -> if d.depth <= iz then 'inline' else 'none')
-                .attr('fill-opacity', (d) -> if d.depth == iz then 0.5 else if d.height == 2 then 0.5 else 0.1)
+            regions_levels
+                .attr('display', (d,i) -> if i <= iz then 'inline' else 'none')
+                
+            region_labels_levels
+                .attr('display', (d,i) -> if i <= iz then 'inline' else 'none')
+                .attr('fill-opacity', (d,i) -> if i == iz then 0.5 else 0.1)
+                
+            # region_labels_g.selectAll('level').filter((d,i)->i <= iz)
+                # .attr('display', (d,i) -> if i <= iz then 'inline' else 'none')
+                # .attr('fill-opacity', (d,i) -> if i == iz then 0.5 else 0.1)
+                
+            # region_labels
+                # .attr('display', (d) -> if d.depth <= iz then 'inline' else 'none')
+                # .attr('fill-opacity', (d) -> if d.depth == iz then 0.5 else if d.height == 2 then 0.5 else 0.1)
+                
                 # .attr('display', (d) -> if d.leaf_descendants.length*z*z*z > 5000 then 'inline' else 'none')
                 # .attr('fill-opacity', (d) -> if d.leaf_descendants.length*z*z*z > 7000 then 0.5*7000/(d.leaf_descendants.length*z*z*z) else 0.5)
                 
             if z >= LEAF_Z
-                region_labels.attr('fill-opacity', 0.1)
-                leaf_labels.attr('display', 'inline')
+                region_labels_g.attr('opacity', 0.2)
                 tooltip.attr('display', 'none')
+                
+                leaf_labels_g.selectAll('.leaf_label')
+                    .data(leaves)
+                  .enter().append('text')
+                    .attr('class', 'leaf_label')
+                    .attr('font-size', (d) -> if d.is_core then 3.5 else 2.5)
+                    .attr('dy', '0.35em')
+                    .attr('transform', (d) -> "translate(#{d.x},#{d.y})")
+                    .text((d) -> "#{d.lemma}")
+                    .attr('font-weight', (d) -> if d.is_core then 'bold' else 'normal')
+                    
             else
-                region_labels.attr('fill-opacity', (d) -> if d.depth == iz then 0.5 else if d.height == 2 then 0.5 else 0.1) # same as above
-                leaf_labels.attr('display', 'none')
+                region_labels_g.attr('opacity', 1)
                 tooltip.attr('display', 'inline')
                 
+                leaf_labels_g.selectAll('.leaf_label')
+                    .data([])
+                  .exit().remove()
+                    
             last_iz = iz
     lod_update(1)
     

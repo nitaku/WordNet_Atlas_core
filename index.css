@@ -24,7 +24,7 @@ html, body {
 }
 
 .land-fill {
-  fill: none;
+  fill: teal;
   stroke: #444444;
   stroke-width: 2px;
 }
@@ -97,4 +97,8 @@ html, body {
   font-weight: bold;
   pointer-events: none;
   text-shadow: -1px 0 white, 0 1px white, 1px 0 white, 0 -1px white;
+}
+
+.leaf_synset {
+  fill-opacity: 0.5;
 }

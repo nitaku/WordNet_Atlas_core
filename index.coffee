@@ -171,7 +171,7 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
     ### compute the space-filling curve layout ###
     console.debug 'Computing the Space-Filling Curve layout...'
     scale = 26
-    translation = sfc_layout.displace(leaves, sfc_layout.PEANO, scale, scale*1/Math.sqrt(3), -Math.PI/4)
+    translation = sfc_layout.displace(leaves, sfc_layout.PEANO, scale, scale, 0)
     
     ### compute also the position of internal nodes ###
     console.debug 'Computing the position of internal nodes...'
@@ -225,7 +225,7 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         
     console.debug 'Computing the jigsaw treemap...'
     ### compute all the internal nodes regions ###
-    jigsaw.treemap(tree, scale, jigsaw.ISO_CELL)
+    jigsaw.treemap(tree, scale, jigsaw.SQUARE_CELL)
     
     console.debug 'Computing label placement...'
     jigsaw.hilbert_labels(tree, scale, translation)
@@ -259,7 +259,7 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         .data(leaves)
       .enter().append('path')
         .attr('class', 'cell')
-        .attr('d', jigsaw.iso_generate_svg_path(scale))
+        .attr('d', jigsaw.square_generate_svg_path(scale))
         .attr('transform', (d) -> "translate(#{d.x},#{d.y})")
         .attr('fill', (d) -> depth_color(d.depth))
         #.attr('fill', '#93cddc')
@@ -310,18 +310,18 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         # .attr('class', 'graph_link')
         # .attr('d', link_generator)
         
-    # ### draw the graph links ###
+    ### draw the graph links ###
     # TENSION = 1
-    # graph_links_g = map.append('g')
-    # graph_links = graph_links_g.selectAll('.graph_link')
-        # .data(graph.links.filter((d)->d.source.type is 'synset' and d.target.type is 'synset'))
-      # .enter().append('path')
-        # .attr('class', 'graph_link')
-        # .attr('d', (d) ->
-            # x1 = d.source.senses[0].x
-            # y1 = d.source.senses[0].y
-            # x2 = d.target.senses[0].x
-            # y2 = d.target.senses[0].y
+    graph_links_g = map.append('g')
+    graph_links = graph_links_g.selectAll('.graph_link')
+        .data(graph.links.filter((d)->d.source.type is 'synset' and d.target.type is 'synset'))
+      .enter().append('path')
+        .attr('class', 'graph_link')
+        .attr('d', (d) ->
+            x1 = d.source.senses[0].x
+            y1 = d.source.senses[0].y
+            x2 = d.target.senses[0].x
+            y2 = d.target.senses[0].y
             
             # ### parent coordinates ###
             # if d.source.parent?
@@ -335,9 +335,9 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
                 # dcx = 0
                 # dcy = 0
                 
-            # return "M#{x1} #{y1} C#{x1} #{y1-40*depth2width(d.source.depth)} #{x2} #{y2-40*depth2width(d.source.depth)} #{x2} #{y2}"
-        # )
-        # .attr('stroke-width', (d) -> depth2width(d.source.depth)*global_scale+0.1)
+            return "M#{x1} #{y1} C#{x1} #{y1-40*depth2width(d.source.depth)} #{x2} #{y2-40*depth2width(d.source.depth)} #{x2} #{y2}"
+        )
+        .attr('stroke-width', (d) -> depth2width(d.source.depth)*global_scale+0.1)
         
     ### draw region labels ###
     # cells2fontsize = d3.scale.pow()
@@ -347,7 +347,8 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         
     LABEL_SCALE = 0.6
     region_labels_g = map.append('g')
-        .attr('transform', "translate(#{translation.dx},#{translation.dy}), scale(1, #{1/Math.sqrt(3)}), rotate(-45)")
+        .attr('transform', "translate(#{translation.dx},#{translation.dy})")
+        # .attr('transform', "translate(#{translation.dx},#{translation.dy}), scale(1, #{1/Math.sqrt(3)}), rotate(-45)")
         
     region_labels_levels = region_labels_g.selectAll('.level')
         .data(levels)

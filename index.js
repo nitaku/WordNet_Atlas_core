@@ -59,7 +59,7 @@
   d3.json('wnen30_core_n_longest.json', function(graph) {
     /* objectify the graph
     */
-    var LABEL_SCALE, LEAF_Z, capital_placement, cells, cells_g, depth, depth2width, depth_color, hierarchy, index, l, last_iz, leaf_labels_g, leaves, levels, n, node, nodes, old_highlighted_depth, region_labels_g, region_labels_levels, regions_g, regions_levels, scale, translation, tree, whiten, whiteness, _i, _j, _k, _l, _len, _len2, _len3, _len4, _ref, _ref2, _ref3;
+    var LABEL_SCALE, LEAF_Z, capital_placement, cells, cells_g, depth, depth2width, depth_color, graph_links, graph_links_g, hierarchy, index, l, last_iz, leaf_labels_g, leaves, levels, n, node, nodes, old_highlighted_depth, region_labels_g, region_labels_levels, regions_g, regions_levels, scale, translation, tree, whiten, whiteness, _i, _j, _k, _l, _len, _len2, _len3, _len4, _ref, _ref2, _ref3;
     console.debug('Indexing nodes...');
     index = {};
     _ref = graph.nodes;
@@ -168,7 +168,7 @@
     */
     console.debug('Computing the Space-Filling Curve layout...');
     scale = 26;
-    translation = sfc_layout.displace(leaves, sfc_layout.PEANO, scale, scale * 1 / Math.sqrt(3), -Math.PI / 4);
+    translation = sfc_layout.displace(leaves, sfc_layout.PEANO, scale, scale, 0);
     /* compute also the position of internal nodes
     */
     console.debug('Computing the position of internal nodes...');
@@ -205,7 +205,7 @@
     console.debug('Computing the jigsaw treemap...');
     /* compute all the internal nodes regions
     */
-    jigsaw.treemap(tree, scale, jigsaw.ISO_CELL);
+    jigsaw.treemap(tree, scale, jigsaw.SQUARE_CELL);
     console.debug('Computing label placement...');
     jigsaw.hilbert_labels(tree, scale, translation);
     console.debug('Drawing...');
@@ -218,7 +218,7 @@
     /* draw the cells
     */
     cells_g = map.append('g');
-    cells = cells_g.selectAll('.cell').data(leaves).enter().append('path').attr('class', 'cell').attr('d', jigsaw.iso_generate_svg_path(scale)).attr('transform', function(d) {
+    cells = cells_g.selectAll('.cell').data(leaves).enter().append('path').attr('class', 'cell').attr('d', jigsaw.square_generate_svg_path(scale)).attr('transform', function(d) {
       return "translate(" + d.x + "," + d.y + ")";
     }).attr('fill', function(d) {
       return depth_color(d.depth);
@@ -266,10 +266,25 @@
     });
     /* draw the graph links
     */
+    /* draw the graph links
+    */
+    graph_links_g = map.append('g');
+    graph_links = graph_links_g.selectAll('.graph_link').data(graph.links.filter(function(d) {
+      return d.source.type === 'synset' && d.target.type === 'synset';
+    })).enter().append('path').attr('class', 'graph_link').attr('d', function(d) {
+      var x1, x2, y1, y2;
+      x1 = d.source.senses[0].x;
+      y1 = d.source.senses[0].y;
+      x2 = d.target.senses[0].x;
+      y2 = d.target.senses[0].y;
+      return "M" + x1 + " " + y1 + " C" + x1 + " " + (y1 - 40 * depth2width(d.source.depth)) + " " + x2 + " " + (y2 - 40 * depth2width(d.source.depth)) + " " + x2 + " " + y2;
+    }).attr('stroke-width', function(d) {
+      return depth2width(d.source.depth) * global_scale + 0.1;
+    });
     /* draw region labels
     */
     LABEL_SCALE = 0.6;
-    region_labels_g = map.append('g').attr('transform', "translate(" + translation.dx + "," + translation.dy + "), scale(1, " + (1 / Math.sqrt(3)) + "), rotate(-45)");
+    region_labels_g = map.append('g').attr('transform', "translate(" + translation.dx + "," + translation.dy + ")");
     region_labels_levels = region_labels_g.selectAll('.level').data(levels).enter().append('g').attr('class', 'level');
     region_labels_levels.selectAll('.region_label').data(function(level) {
       return level.filter(function(d) {

@@ -73,8 +73,16 @@ svg.call(zoom)
 
 ### DATA ###
 
-console.debug 'Getting data...'
-d3.json 'wnen30_core_n_longest.json', (graph) ->
+app_url = String(document.URL).split('#')
+lang = app_url[app_url.length-1] 
+if lang.length != 3
+    url = 'wnen30_core_n_longest.json'
+    console.debug 'Getting data for English...'
+else
+    url = "multilingual/wnen30_core_n_longest_#{lang}.json"
+    console.debug "Getting data for #{lang}..."
+
+d3.json url, (graph) ->
     
     ### objectify the graph ###
     console.debug 'Indexing nodes...'
@@ -82,6 +90,9 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
     for n in graph.nodes
         index[n.id] = n
         
+        if n.type is 'synset'
+            n.senses = []
+            
     console.debug 'Objectifying the graph and constructing the tree...'
     ### resolve node IDs ###
     for l in graph.links
@@ -98,9 +109,6 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         ### store senses also in a different structure ###
         if l.target.type == 'sense'
             # ASSERT sources are synsets
-            if not l.source.senses?
-                l.source.senses = []
-                
             l.source.senses.push l.target
             
     ### find the root of the tree ###
@@ -269,7 +277,7 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
             tooltip_g
                 .attr('transform', "translate(#{d.x},#{d.y-scale*0.5})")
             tooltip
-                .text("#{d.lemma}")
+                .text("#{if d.lemma? then d.lemma else '?'}")
         )
         .on('mouseleave', () -> tooltip.text(''))
         
@@ -312,17 +320,28 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         
     ### draw the graph links ###
     # TENSION = 1
-    graph_links_g = map.append('g')
-    graph_links = graph_links_g.selectAll('.graph_link')
-        .data(graph.links.filter((d)->d.source.type is 'synset' and d.target.type is 'synset'))
-      .enter().append('path')
-        .attr('class', 'graph_link')
-        .attr('d', (d) ->
-            x1 = d.source.senses[0].x
-            y1 = d.source.senses[0].y
-            x2 = d.target.senses[0].x
-            y2 = d.target.senses[0].y
-            
+    # graph_links_g = map.append('g')
+    # graph_links = graph_links_g.selectAll('.graph_link')
+        # .data(graph.links.filter((d)->d.source.type is 'synset' and d.target.type is 'synset'))
+      # .enter().append('path')
+        # .attr('class', 'graph_link')
+        # .attr('d', (d) ->
+            # if d.source.senses.length > 0
+                # x1 = d.source.senses[0].x
+                # y1 = d.source.senses[0].y
+            # else
+                ## this is a synset without senses (could happen in non-English langs)
+                # x1 = d.source.x
+                # y1 = d.source.y
+                
+            # if d.target.senses.length > 0
+                # x2 = d.target.senses[0].x
+                # y2 = d.target.senses[0].y
+            # else
+                ## this is a synset without senses (could happen in non-English langs)
+                # x2 = d.target.x
+                # y2 = d.target.y
+                
             # ### parent coordinates ###
             # if d.source.parent?
                 # px = d.source.parent.senses[0].x
@@ -335,9 +354,9 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
                 # dcx = 0
                 # dcy = 0
                 
-            return "M#{x1} #{y1} C#{x1} #{y1-40*depth2width(d.source.depth)} #{x2} #{y2-40*depth2width(d.source.depth)} #{x2} #{y2}"
-        )
-        .attr('stroke-width', (d) -> depth2width(d.source.depth)*global_scale+0.1)
+            # return "M#{x1} #{y1} C#{x1} #{y1-40*depth2width(d.source.depth)} #{x2} #{y2-40*depth2width(d.source.depth)} #{x2} #{y2}"
+        # )
+        # .attr('stroke-width', (d) -> depth2width(d.source.depth)*global_scale+0.1)
         
     ### draw region labels ###
     # cells2fontsize = d3.scale.pow()
@@ -361,7 +380,7 @@ d3.json 'wnen30_core_n_longest.json', (graph) ->
         .attr('class', 'region_label')
         .classed('leaf_synset', (d)->d.height is 2)
         .attr('dy', '0.35em')
-        .text((d) -> d.senses[0].lemma) # first sense is the most common
+        .text((d) -> if d.senses.length > 0 then d.senses[0].lemma else '?') # first sense is the most common
         .attr('transform', (d) ->
             bbox = this.getBBox()
             bbox_aspect = bbox.width / bbox.height

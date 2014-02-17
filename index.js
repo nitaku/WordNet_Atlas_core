@@ -3,7 +3,7 @@
 */
 
 (function() {
-  var global_scale, map, svg, svg_bbox, vis, zoom;
+  var app_url, global_scale, lang, map, svg, svg_bbox, url, vis, zoom;
 
   svg = d3.select('body').append('svg').attr('width', '100%').attr('height', '100%');
 
@@ -54,18 +54,29 @@
   /* DATA
   */
 
-  console.debug('Getting data...');
+  app_url = String(document.URL).split('#');
 
-  d3.json('wnen30_core_n_longest.json', function(graph) {
+  lang = app_url[app_url.length - 1];
+
+  if (lang.length !== 3) {
+    url = 'wnen30_core_n_longest.json';
+    console.debug('Getting data for English...');
+  } else {
+    url = "multilingual/wnen30_core_n_longest_" + lang + ".json";
+    console.debug("Getting data for " + lang + "...");
+  }
+
+  d3.json(url, function(graph) {
     /* objectify the graph
     */
-    var LABEL_SCALE, LEAF_Z, capital_placement, cells, cells_g, depth, depth2width, depth_color, graph_links, graph_links_g, hierarchy, index, l, last_iz, leaf_labels_g, leaves, levels, n, node, nodes, old_highlighted_depth, region_labels_g, region_labels_levels, regions_g, regions_levels, scale, translation, tree, whiten, whiteness, _i, _j, _k, _l, _len, _len2, _len3, _len4, _ref, _ref2, _ref3;
+    var LABEL_SCALE, LEAF_Z, capital_placement, cells, cells_g, depth, depth2width, depth_color, hierarchy, index, l, last_iz, leaf_labels_g, leaves, levels, n, node, nodes, old_highlighted_depth, region_labels_g, region_labels_levels, regions_g, regions_levels, scale, translation, tree, whiten, whiteness, _i, _j, _k, _l, _len, _len2, _len3, _len4, _ref, _ref2, _ref3;
     console.debug('Indexing nodes...');
     index = {};
     _ref = graph.nodes;
     for (_i = 0, _len = _ref.length; _i < _len; _i++) {
       n = _ref[_i];
       index[n.id] = n;
+      if (n.type === 'synset') n.senses = [];
     }
     console.debug('Objectifying the graph and constructing the tree...');
     /* resolve node IDs
@@ -83,10 +94,7 @@
       }
       /* store senses also in a different structure
       */
-      if (l.target.type === 'sense') {
-        if (!(l.source.senses != null)) l.source.senses = [];
-        l.source.senses.push(l.target);
-      }
+      if (l.target.type === 'sense') l.source.senses.push(l.target);
     }
     /* find the root of the tree
     */
@@ -225,7 +233,7 @@
     }).on('mouseenter', function(d) {
       if (d3.event.defaultPrevented) return;
       tooltip_g.attr('transform', "translate(" + d.x + "," + (d.y - scale * 0.5) + ")");
-      return tooltip.text("" + d.lemma);
+      return tooltip.text("" + (d.lemma != null ? d.lemma : '?'));
     }).on('mouseleave', function() {
       return tooltip.text('');
     });
@@ -268,19 +276,6 @@
     */
     /* draw the graph links
     */
-    graph_links_g = map.append('g');
-    graph_links = graph_links_g.selectAll('.graph_link').data(graph.links.filter(function(d) {
-      return d.source.type === 'synset' && d.target.type === 'synset';
-    })).enter().append('path').attr('class', 'graph_link').attr('d', function(d) {
-      var x1, x2, y1, y2;
-      x1 = d.source.senses[0].x;
-      y1 = d.source.senses[0].y;
-      x2 = d.target.senses[0].x;
-      y2 = d.target.senses[0].y;
-      return "M" + x1 + " " + y1 + " C" + x1 + " " + (y1 - 40 * depth2width(d.source.depth)) + " " + x2 + " " + (y2 - 40 * depth2width(d.source.depth)) + " " + x2 + " " + y2;
-    }).attr('stroke-width', function(d) {
-      return depth2width(d.source.depth) * global_scale + 0.1;
-    });
     /* draw region labels
     */
     LABEL_SCALE = 0.6;
@@ -293,7 +288,11 @@
     }).enter().append('text').attr('class', 'region_label').classed('leaf_synset', function(d) {
       return d.height === 2;
     }).attr('dy', '0.35em').text(function(d) {
-      return d.senses[0].lemma;
+      if (d.senses.length > 0) {
+        return d.senses[0].lemma;
+      } else {
+        return '?';
+      }
     }).attr('transform', function(d) {
       var bbox, bbox_aspect, h_ratio, lbbox, lbbox_aspect, lbbox_height, lbbox_width, ratio, rotate, w_ratio;
       bbox = this.getBBox();

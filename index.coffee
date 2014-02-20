@@ -179,7 +179,7 @@ d3.json url, (graph) ->
     ### compute the space-filling curve layout ###
     console.debug 'Computing the Space-Filling Curve layout...'
     scale = 26
-    translation = sfc_layout.displace(leaves, sfc_layout.PEANO, scale, scale, 0)
+    translation = sfc_layout.displace(leaves, sfc_layout.HILBERT, scale, scale*1/Math.sqrt(3), Math.PI/4)
     
     ### compute also the position of internal nodes ###
     console.debug 'Computing the position of internal nodes...'
@@ -233,7 +233,7 @@ d3.json url, (graph) ->
         
     console.debug 'Computing the jigsaw treemap...'
     ### compute all the internal nodes regions ###
-    jigsaw.treemap(tree, scale, jigsaw.SQUARE_CELL)
+    jigsaw.treemap(tree, scale, jigsaw.ISO_CELL)
     
     console.debug 'Computing label placement...'
     jigsaw.hilbert_labels(tree, scale, translation)
@@ -267,7 +267,7 @@ d3.json url, (graph) ->
         .data(leaves)
       .enter().append('path')
         .attr('class', 'cell')
-        .attr('d', jigsaw.square_generate_svg_path(scale))
+        .attr('d', jigsaw.iso_generate_svg_path(scale))
         .attr('transform', (d) -> "translate(#{d.x},#{d.y})")
         .attr('fill', (d) -> depth_color(d.depth))
         #.attr('fill', '#93cddc')
@@ -366,8 +366,8 @@ d3.json url, (graph) ->
         
     LABEL_SCALE = 0.6
     region_labels_g = map.append('g')
-        .attr('transform', "translate(#{translation.dx},#{translation.dy})")
-        # .attr('transform', "translate(#{translation.dx},#{translation.dy}), scale(1, #{1/Math.sqrt(3)}), rotate(-45)")
+        # .attr('transform', "translate(#{translation.dx},#{translation.dy})")
+        .attr('transform', "translate(#{translation.dx},#{translation.dy}), scale(1, #{1/Math.sqrt(3)}), rotate(45)")
         
     region_labels_levels = region_labels_g.selectAll('.level')
         .data(levels)
@@ -398,7 +398,7 @@ d3.json url, (graph) ->
             h_ratio = lbbox_height / bbox.height
             ratio = Math.min(w_ratio, h_ratio)*LABEL_SCALE
             
-            return "translate(#{d.label_bbox.x+d.label_bbox.width/2},#{d.label_bbox.y+d.label_bbox.height/2}),scale(#{ratio}),rotate(#{if rotate then 90 else 0})"
+            return "translate(#{d.label_bbox.x+d.label_bbox.width/2},#{d.label_bbox.y+d.label_bbox.height/2}),scale(#{ratio}),rotate(#{if rotate then -90 else 0})"
         )
         
     ### draw the leaf labels ###
